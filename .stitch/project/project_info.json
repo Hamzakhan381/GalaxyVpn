@@ -1,0 +1,38 @@
+{
+  "projectId": "3821877934525041340",
+  "title": "App Screen UI Design",
+  "designTheme": "Quiet Bastion",
+  "primaryColor": "#172b4d",
+  "secondaryColor": "#f6f8fb",
+  "accentColor": "#c7f000",
+  "screens": [
+    {
+      "id": "532947ea91c04e0da52a7d4bb70a2be9",
+      "title": "S01 - Interactive Splash Screen (Animated)"
+    },
+    {
+      "id": "2f2f9803a8a647b1b6b84631c3cd6cfe",
+      "title": "S01 - Welcome & Entry"
+    },
+    {
+      "id": "65e2bace648b4c78a6ecaac5b76586e1",
+      "title": "S03 - VPN Permission Disclosure"
+    },
+    {
+      "id": "323414ad13f845be8085e2a9d7436f8c",
+      "title": "S08 - Home (Disconnected)"
+    },
+    {
+      "id": "847c72654979418ba18d3fcf756c2d67",
+      "title": "S10 - Home (Connected)"
+    },
+    {
+      "id": "d6a208bd720644088881c442e2805432",
+      "title": "S13 - Server Discovery"
+    },
+    {
+      "id": "c3f626e999e240248c974d6f5767adce",
+      "title": "S17 - Activity History"
+    }
+  ]
+}

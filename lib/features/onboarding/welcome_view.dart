@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../../app/theme/app_colors.dart';
 import '../../app/theme/app_text_styles.dart';
 import '../../core/constants/app_constants.dart';
@@ -11,6 +12,8 @@ import '../common/app_logo.dart';
 import '../common/primary_button.dart';
 import '../common/secondary_button.dart';
 import 'vpn_disclosure_view.dart';
+
+import '../common/cyber_background.dart';
 
 class WelcomeView extends StatefulWidget {
   const WelcomeView({super.key});
@@ -29,7 +32,7 @@ class _WelcomeViewState extends State<WelcomeView>
     super.initState();
     _scaleController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 600),
+      duration: const Duration(milliseconds: 700),
     );
     _scaleAnim = CurvedAnimation(
       parent: _scaleController,
@@ -63,131 +66,197 @@ class _WelcomeViewState extends State<WelcomeView>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [AppColors.mistBase, Color(0xFFECF2FF)],
-          ),
-        ),
+      backgroundColor: AppColors.primaryBackground,
+      body: CyberBackground(
         child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-            child: Column(
-              children: [
-                const Spacer(flex: 2),
-                ScaleTransition(
-                  scale: _scaleAnim,
-                  child: const AppLogo(size: 88, showBadge: true),
-                ),
-                const SizedBox(height: 24),
-                Text(
-                  AppConstants.appName,
-                  style: AppTextStyles.displayLg.copyWith(
-                    color: AppColors.navy100,
-                    fontSize: 30,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  'Quiet, disciplined network encryption engineered for academic privacy and mobile security.',
-                  style: AppTextStyles.bodyLg.copyWith(
-                    color: AppColors.navy70,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                const Spacer(flex: 3),
-                // Feature pills
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: AppColors.surfaceElevated,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border(
-                      top: const BorderSide(
-                          color: AppColors.signalLime, width: 2.5),
-                      left: BorderSide(color: AppColors.surfaceBorder, width: 1),
-                      right:
-                          BorderSide(color: AppColors.surfaceBorder, width: 1),
-                      bottom:
-                          BorderSide(color: AppColors.surfaceBorder, width: 1),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              return SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 20,
+                    ),
+                    child: IntrinsicHeight(
+                      child: Column(
+                        children: [
+                          const Spacer(flex: 2),
+                          AnimatedFadeSlide(
+                            delay: const Duration(milliseconds: 50),
+                            child: Center(
+                              child: ScaleTransition(
+                                scale: _scaleAnim,
+                                child: Stack(
+                                  alignment: Alignment.center,
+                                  children: [
+                                    Container(
+                                      width: 110,
+                                      height: 110,
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: Colors.white.withValues(
+                                              alpha: 0.05,
+                                            ),
+                                            blurRadius: 36,
+                                            spreadRadius: 6,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    const AppLogo(size: 88, showBadge: true),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 24),
+                          AnimatedFadeSlide(
+                            delay: const Duration(milliseconds: 120),
+                            child: Column(
+                              children: [
+                                Text(
+                                  AppConstants.appName,
+                                  style: AppTextStyles.displayLg.copyWith(
+                                    color: Colors.white,
+                                    fontSize: 32,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 0.5,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                                const SizedBox(height: 10),
+                                Text(
+                                  'Quiet, disciplined network encryption engineered for academic privacy and mobile security.',
+                                  style: AppTextStyles.bodyLg.copyWith(
+                                    color: Colors.white70,
+                                    height: 1.4,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ],
+                            ),
+                          ),
+                          const Spacer(flex: 3),
+                          // Feature pills
+                          AnimatedFadeSlide(
+                            delay: const Duration(milliseconds: 200),
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: AppColors.cardBackground,
+                                border: Border.all(
+                                  color: AppColors.border,
+                                  width: 1,
+                                ),
+                                borderRadius: BorderRadius.circular(18),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.35),
+                                    blurRadius: 16,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
+                              ),
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 16,
+                                horizontal: 12,
+                              ),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: _buildPill(
+                                      Icons.lock_outline,
+                                      'OpenVPN Encrypted',
+                                    ),
+                                  ),
+                                  _buildDivider(),
+                                  Expanded(
+                                    child: _buildPill(
+                                      Icons.visibility_off_outlined,
+                                      'Zero Payload Logs',
+                                    ),
+                                  ),
+                                  _buildDivider(),
+                                  Expanded(
+                                    child: _buildPill(
+                                      Icons.public,
+                                      'Public Relays',
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 24),
+                          // Primary Action: Create Account
+                          AnimatedFadeSlide(
+                            delay: const Duration(milliseconds: 260),
+                            child: PrimaryButton(
+                              text: 'Create Account',
+                              onPressed: () {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) => const SignUpView(),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          // Secondary Action: Log In
+                          AnimatedFadeSlide(
+                            delay: const Duration(milliseconds: 320),
+                            child: SecondaryButton(
+                              text: 'Log In',
+                              onPressed: () {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) => const LoginView(),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          // Guest Action: Continue as Guest
+                          AnimatedFadeSlide(
+                            delay: const Duration(milliseconds: 380),
+                            child: TextButton(
+                              onPressed: () => _handleGuest(context),
+                              child: Text(
+                                'Continue as Guest',
+                                style: AppTextStyles.labelLg.copyWith(
+                                  color: AppColors.primaryAccent,
+                                  decoration: TextDecoration.underline,
+                                  decorationColor: AppColors.primaryAccent,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          AnimatedFadeSlide(
+                            delay: const Duration(milliseconds: 420),
+                            child: Text(
+                              'Guest mode provides complete VPN functionality without an account.',
+                              style: AppTextStyles.bodyMd.copyWith(
+                                color: AppColors.mutedText,
+                                fontSize: 11,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child:
-                            _buildPill(Icons.lock_outline, 'OpenVPN Encrypted'),
-                      ),
-                      _buildDivider(),
-                      Expanded(
-                        child: _buildPill(
-                            Icons.visibility_off_outlined, 'Zero Payload Logs'),
-                      ),
-                      _buildDivider(),
-                      Expanded(
-                        child: _buildPill(Icons.public, 'Public Relays'),
-                      ),
-                    ],
-                  ),
                 ),
-                const SizedBox(height: 32),
-                // Primary Action: Create Account
-                Container(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppColors.inkNavy.withValues(alpha: 0.18),
-                        blurRadius: 20,
-                        offset: const Offset(0, 8),
-                      ),
-                    ],
-                  ),
-                  child: PrimaryButton(
-                    text: 'Create Account',
-                    onPressed: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(builder: (_) => const SignUpView()),
-                      );
-                    },
-                  ),
-                ),
-                const SizedBox(height: 12),
-                // Secondary Action: Log In
-                SecondaryButton(
-                  text: 'Log In',
-                  onPressed: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => const LoginView()),
-                    );
-                  },
-                ),
-                const SizedBox(height: 16),
-                // Guest Action: Continue as Guest
-                TextButton(
-                  onPressed: () => _handleGuest(context),
-                  child: Text(
-                    'Continue as Guest',
-                    style: AppTextStyles.labelLg.copyWith(
-                      color: AppColors.navy70,
-                      decoration: TextDecoration.underline,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Guest mode provides complete VPN functionality without an account.',
-                  style: AppTextStyles.bodyMd.copyWith(
-                    color: AppColors.navy45,
-                    fontSize: 11,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ],
-            ),
+              );
+            },
           ),
         ),
       ),
@@ -197,16 +266,17 @@ class _WelcomeViewState extends State<WelcomeView>
   Widget _buildPill(IconData icon, String text) {
     return Column(
       children: [
-        Icon(icon, size: 20, color: AppColors.inkNavy),
-        const SizedBox(height: 4),
+        Icon(icon, size: 20, color: AppColors.primaryAccent),
+        const SizedBox(height: 6),
         Text(
           text,
           textAlign: TextAlign.center,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: AppTextStyles.labelSm.copyWith(
-            color: AppColors.navy70,
-            fontSize: 10,
+            color: AppColors.secondaryText,
+            fontSize: 11,
+            fontWeight: FontWeight.w500,
           ),
         ),
       ],
@@ -214,10 +284,6 @@ class _WelcomeViewState extends State<WelcomeView>
   }
 
   Widget _buildDivider() {
-    return Container(
-      width: 1,
-      height: 28,
-      color: AppColors.navy12,
-    );
+    return Container(width: 1, height: 28, color: AppColors.border);
   }
 }
