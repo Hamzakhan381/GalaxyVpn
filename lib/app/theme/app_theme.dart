@@ -19,12 +19,12 @@ class AppTheme {
       primaryColor: AppColors.primaryAccent,                // #F5F5F5
       pageTransitionsTheme: const PageTransitionsTheme(
         builders: {
-          TargetPlatform.android: SharkPageTransitionsBuilder(),
-          TargetPlatform.iOS: SharkPageTransitionsBuilder(),
-          TargetPlatform.fuchsia: SharkPageTransitionsBuilder(),
-          TargetPlatform.linux: SharkPageTransitionsBuilder(),
-          TargetPlatform.macOS: SharkPageTransitionsBuilder(),
-          TargetPlatform.windows: SharkPageTransitionsBuilder(),
+          TargetPlatform.android: GalaxyPageTransitionsBuilder(),
+          TargetPlatform.iOS: GalaxyPageTransitionsBuilder(),
+          TargetPlatform.fuchsia: GalaxyPageTransitionsBuilder(),
+          TargetPlatform.linux: GalaxyPageTransitionsBuilder(),
+          TargetPlatform.macOS: GalaxyPageTransitionsBuilder(),
+          TargetPlatform.windows: GalaxyPageTransitionsBuilder(),
         },
       ),
       colorScheme: const ColorScheme(

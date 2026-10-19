@@ -86,7 +86,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 3000));
     await tester.pump(const Duration(milliseconds: 850));
 
-    expect(find.text('Shark VPN'), findsOneWidget);
+    expect(find.text('Galaxy VPN'), findsOneWidget);
     expect(find.text('SECURE  •  PRIVATE  •  FAST'), findsOneWidget);
     expect(find.textContaining('relay'), findsOneWidget);
 
@@ -144,7 +144,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 50));
       await tester.pump(const Duration(milliseconds: 1200));
 
-      expect(find.text('Shark VPN'), findsOneWidget);
+      expect(find.text('Galaxy VPN'), findsOneWidget);
       expect(tester.takeException(), isNull);
 
       await tester.pump(const Duration(seconds: 7));

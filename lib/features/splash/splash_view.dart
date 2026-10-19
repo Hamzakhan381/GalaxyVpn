@@ -19,12 +19,13 @@ import '../home/main_navigation_shell.dart';
 import '../onboarding/vpn_disclosure_view.dart';
 import '../onboarding/welcome_view.dart';
 
-/// Animated launch screen for Shark VPN.
+/// Animated launch screen for Galaxy VPN.
 ///
 /// A single intro timeline choreographs the whole sequence:
 ///   1. radar backdrop fades in while encrypted packets stream toward the core
 ///   2. the shield outline draws itself with a glowing pen tip
-///   3. the fin snaps in and a "lock" shockwave fires
+///   3. the nebula fills in, the ringed planet pops and a "lock" shockwave fires
+///      while the stars ignite and keep twinkling
 ///   4. a light sheen crosses the mark, the title tracks in, the tagline wipes in
 ///   5. a zoom-through exit hands off to the next screen
 /// A second, looping controller drives the ambient radar, orbits and shimmer.
@@ -51,7 +52,8 @@ class _SplashViewState extends State<SplashView> with TickerProviderStateMixin {
   late final Animation<double> _ringTrace;
   late final Animation<double> _shieldTrace;
   late final Animation<double> _shieldFill;
-  late final Animation<double> _finPop;
+  late final Animation<double> _planetPop;
+  late final Animation<double> _starsIn;
   late final Animation<double> _lockBurst;
   late final Animation<double> _sheen;
   late final Animation<double> _sheenEcho;
@@ -98,7 +100,8 @@ class _SplashViewState extends State<SplashView> with TickerProviderStateMixin {
     _ringTrace = interval(0.02, 0.32, Curves.easeInOutCubic);
     _shieldTrace = interval(0.06, 0.40, Curves.easeInOutCubic);
     _shieldFill = interval(0.30, 0.46, Curves.easeOut);
-    _finPop = interval(0.36, 0.58, Curves.elasticOut);
+    _planetPop = interval(0.36, 0.58, Curves.elasticOut);
+    _starsIn = interval(0.46, 0.64, Curves.easeOutBack);
     _lockBurst = interval(0.40, 0.66, Curves.easeOutCubic);
     _sheen = interval(0.50, 0.66, Curves.easeInOutSine);
     _sheenEcho = interval(0.70, 0.84, Curves.easeInOutSine);
@@ -341,7 +344,9 @@ class _SplashViewState extends State<SplashView> with TickerProviderStateMixin {
                             ringTrace: _ringTrace.value,
                             shieldTrace: _shieldTrace.value,
                             fill: _shieldFill.value,
-                            fin: _finPop.value,
+                            planet: _planetPop.value,
+                            stars: _starsIn.value,
+                            twinkle: _reduceMotion ? 0.0 : loop,
                             sheen: _sheen.value > 0 && _sheen.value < 1
                                 ? _sheen.value
                                 : _sheenEcho.value,
@@ -644,8 +649,8 @@ class _SplashBackdropPainter extends CustomPainter {
       Paint()
         ..shader = RadialGradient(
           colors: [
-            AppColors.primaryText.withValues(
-              alpha: (0.07 + 0.02 * wave) * fade,
+            AppColors.galaxyNebula.withValues(
+              alpha: (0.22 + 0.06 * wave) * fade,
             ),
             Colors.transparent,
           ],
@@ -800,20 +805,25 @@ class _SplashBackdropPainter extends CustomPainter {
       old.reduceMotion != reduceMotion;
 }
 
-/// Draws the Shark VPN mark progressively: ring arc, shield outline with a
-/// glowing pen tip, charcoal fill, elastic fin, then a diagonal light sheen.
+/// Draws the Galaxy VPN mark progressively: orbit arc, shield outline with a
+/// glowing pen tip, nebula fill, elastic planet pop, igniting stars, then a
+/// diagonal light sheen.
 class _SplashLogoPainter extends CustomPainter {
   final double ringTrace;
   final double shieldTrace;
   final double fill;
-  final double fin;
+  final double planet;
+  final double stars;
+  final double twinkle;
   final double sheen;
 
   _SplashLogoPainter({
     required this.ringTrace,
     required this.shieldTrace,
     required this.fill,
-    required this.fin,
+    required this.planet,
+    required this.stars,
+    required this.twinkle,
     required this.sheen,
   });
 
@@ -821,7 +831,7 @@ class _SplashLogoPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final w = size.width;
     final c = size.center(Offset.zero);
-    final shield = SharkLogoGeometry.shield(size);
+    final shield = GalaxyLogoGeometry.shield(size);
 
     // Outer ring arc
     if (ringTrace > 0) {
@@ -837,24 +847,8 @@ class _SplashLogoPainter extends CustomPainter {
       );
     }
 
-    // Charcoal body + soft inner light
-    if (fill > 0) {
-      canvas.drawPath(
-        shield,
-        Paint()..color = AppColors.cardBackground.withValues(alpha: fill),
-      );
-      canvas.drawPath(
-        shield,
-        Paint()
-          ..shader = RadialGradient(
-            center: const Alignment(0, -0.3),
-            colors: [
-              AppColors.primaryText.withValues(alpha: 0.10 * fill),
-              Colors.transparent,
-            ],
-          ).createShader(Offset.zero & size),
-      );
-    }
+    // Nebula body fades in
+    GalaxyLogoGeometry.paintNebula(canvas, size, opacity: fill);
 
     // Shield outline, drawn progressively
     if (shieldTrace > 0) {
@@ -891,29 +885,14 @@ class _SplashLogoPainter extends CustomPainter {
       }
     }
 
-    // Fin snaps in with an elastic scale around its base
-    if (fin > 0) {
-      final anchor = Offset(w * 0.5, size.height * 0.62);
-      canvas.save();
-      canvas.translate(anchor.dx, anchor.dy);
-      canvas.scale(fin.clamp(0.0, 1.4));
-      canvas.translate(-anchor.dx, -anchor.dy);
-      canvas.drawPath(
-        SharkLogoGeometry.fin(size),
-        Paint()..color = AppColors.primaryText,
-      );
-      final (slitStart, slitEnd) = SharkLogoGeometry.slit(size);
-      canvas.drawLine(
-        slitStart,
-        slitEnd,
-        Paint()
-          ..color = AppColors.cardBackground
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = w * 0.025
-          ..strokeCap = StrokeCap.round,
-      );
-      canvas.restore();
-    }
+    // Planet pops in elastically; stars ignite and twinkle
+    GalaxyLogoGeometry.paintCore(
+      canvas,
+      size,
+      scale: planet.clamp(0.0, 1.4),
+      stars: stars.clamp(0.0, 1.3),
+      twinkle: twinkle,
+    );
 
     // Diagonal light sheen clipped to the shield
     if (sheen > 0 && sheen < 1) {
@@ -949,6 +928,8 @@ class _SplashLogoPainter extends CustomPainter {
       old.ringTrace != ringTrace ||
       old.shieldTrace != shieldTrace ||
       old.fill != fill ||
-      old.fin != fin ||
+      old.planet != planet ||
+      old.stars != stars ||
+      old.twinkle != twinkle ||
       old.sheen != sheen;
 }

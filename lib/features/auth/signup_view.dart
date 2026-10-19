@@ -102,7 +102,7 @@ class _SignUpViewState extends State<SignUpView> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Join Shark VPN',
+                          'Join Galaxy VPN',
                           style: AppTextStyles.headlineLg.copyWith(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,

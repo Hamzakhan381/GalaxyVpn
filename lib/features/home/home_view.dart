@@ -948,7 +948,7 @@ class _HomeViewState extends State<HomeView> with TickerProviderStateMixin {
             ),
             const SizedBox(height: 12),
             Text(
-              'Shark VPN demonstrates an Android client implementation '
+              'Galaxy VPN demonstrates an Android client implementation '
               'utilizing Flutter and public relay nodes. No user traffic is '
               'monitored or monetized.',
               style: AppTextStyles.bodyMd.copyWith(

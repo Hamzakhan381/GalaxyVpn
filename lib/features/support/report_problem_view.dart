@@ -83,7 +83,7 @@ class _ReportProblemViewState extends State<ReportProblemView> {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  'Help improve Shark VPN by reporting protocol failures, unreachable nodes, or UI bugs.',
+                  'Help improve Galaxy VPN by reporting protocol failures, unreachable nodes, or UI bugs.',
                   style: AppTextStyles.bodyMd.copyWith(
                     color: AppColors.secondaryText,
                   ),

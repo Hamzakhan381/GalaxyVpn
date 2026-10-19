@@ -417,7 +417,7 @@ class _SettingsViewState extends State<SettingsView> {
                       ),
                       SettingsRow(
                         icon: Icons.info_outline_rounded,
-                        title: 'About Shark VPN',
+                        title: 'About Galaxy VPN',
                         subtitle: 'Version 1.0.0 (Build 1)',
                         showDivider: false,
                         onTap: () {

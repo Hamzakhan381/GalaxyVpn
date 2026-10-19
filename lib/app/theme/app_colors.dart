@@ -35,6 +35,12 @@ class AppColors {
   static const Color errorStatus         = Color(0xFFFF5C5C); // restrained red (errors)
 
 
+  // ── Galaxy Brand Mark (logo & launcher icon only) ──────────────────────────
+  static const Color galaxyNebula     = Color(0xFF5B45B0); // violet nebula core
+  static const Color galaxyNebulaDeep = Color(0xFF1C1733); // deep-space edge
+  static const Color galaxyStarGlow   = Color(0xFFC9BCFF); // lavender starlight
+
+
   // ── Fundamental Aliases ────────────────────────────────────────────────────
   static const Color pureBlack        = primaryBackground;   // #090909
   static const Color richCharcoal     = secondaryBackground; // #121212

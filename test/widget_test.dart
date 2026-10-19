@@ -60,7 +60,7 @@ void main() {
       await tester.pumpWidget(buildTestableWidget(const WelcomeView()));
       await tester.pumpAndSettle();
 
-      expect(find.text('Shark VPN'), findsOneWidget);
+      expect(find.text('Galaxy VPN'), findsOneWidget);
       expect(find.text('Create Account'), findsOneWidget);
       expect(find.text('Log In'), findsOneWidget);
       expect(find.text('Continue as Guest'), findsOneWidget);
@@ -74,7 +74,7 @@ void main() {
 
       // Verify core disclosure text
       expect(
-        find.textContaining("Shark VPN uses Android's VPN service"),
+        find.textContaining("Galaxy VPN uses Android's VPN service"),
         findsOneWidget,
       );
 
@@ -91,7 +91,7 @@ void main() {
       expect(checkbox.value, isFalse);
 
       // Continue button must be disabled when checkbox is unchecked
-      final continueButton = find.widgetWithText(ElevatedButton, 'Continue to Shark VPN');
+      final continueButton = find.widgetWithText(ElevatedButton, 'Continue to Galaxy VPN');
       expect(continueButton, findsOneWidget);
       ElevatedButton btn = tester.widget<ElevatedButton>(continueButton);
       expect(btn.onPressed, isNull);

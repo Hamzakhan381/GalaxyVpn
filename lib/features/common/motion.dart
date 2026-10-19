@@ -90,8 +90,8 @@ class _PressableScaleState extends State<PressableScale> {
 
 /// App-wide page transition: the incoming page rises, scales and fades in
 /// while the outgoing page gently recedes.
-class SharkPageTransitionsBuilder extends PageTransitionsBuilder {
-  const SharkPageTransitionsBuilder();
+class GalaxyPageTransitionsBuilder extends PageTransitionsBuilder {
+  const GalaxyPageTransitionsBuilder();
 
   @override
   Widget buildTransitions<T>(

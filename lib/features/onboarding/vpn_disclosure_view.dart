@@ -100,7 +100,7 @@ class _VpnDisclosureViewState extends State<VpnDisclosureView> {
                 AnimatedFadeSlide(
                   delay: const Duration(milliseconds: 250),
                   child: PrimaryButton(
-                    text: 'Continue to Shark VPN',
+                    text: 'Continue to Galaxy VPN',
                     isLoading: _isRequestingPermission,
                     onPressed: _isConsentChecked ? _handleProceed : null,
                   ),

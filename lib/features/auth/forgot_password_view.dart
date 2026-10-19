@@ -89,7 +89,7 @@ class _ForgotPasswordViewState extends State<ForgotPasswordView> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Enter the email address registered with your Shark VPN profile and we will generate recovery instructions.',
+                  'Enter the email address registered with your Galaxy VPN profile and we will generate recovery instructions.',
                   style: AppTextStyles.bodyMd.copyWith(
                     color: AppColors.secondaryText,
                   ),
