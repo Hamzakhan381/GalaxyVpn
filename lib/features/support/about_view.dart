@@ -72,8 +72,8 @@ class AboutView extends StatelessWidget {
               AnimatedFadeSlide(
                 delayMs: 180,
                 child: _buildCard(
-                  title: 'OpenVPN & Network Core',
-                  content: 'Encapsulation utilizes the openvpn_flutter library communicating directly with Android\'s VpnService virtual TUN interface, connecting to verified university and community public relays.',
+                  title: 'SSTP, OpenVPN & Network Core',
+                  content: 'Tunnels run over SSTP, which travels inside a standard TLS connection so it works even on networks that block OpenVPN, with OpenVPN as a fallback. Both feed Android\'s VpnService TUN interface and connect to VPN Gate\'s university and community public relays.',
                 ),
               ),
               const SizedBox(height: 16),

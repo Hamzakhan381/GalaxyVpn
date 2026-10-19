@@ -23,7 +23,7 @@
             </intent-filter>
             <property
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
-                android:value="Encrypted VPN tunnel for network routing" />
+                android:value="vpn" />
         </service>
         <service
             android:name=".ShieldRouteVpnService"
@@ -35,7 +35,7 @@
             </intent-filter>
             <property
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
-                android:value="Encrypted native VPN tunnel for ShieldRoute" />
+                android:value="vpn" />
         </service>
         <activity
             android:name=".MainActivity"

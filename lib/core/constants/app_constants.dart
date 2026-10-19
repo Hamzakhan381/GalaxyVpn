@@ -29,6 +29,7 @@ class AppConstants {
   static const String keyReduceMotion = 'setting_reduce_motion';
   static const String keyEmulatorMode = 'setting_emulator_mode';
   static const String keySelectedServer = 'selected_server_cache';
+  static const String keyRelayCatalogCache = 'relay_catalog_cache';
   static const String keySessionsHistory = 'sessions_history_json';
   static const String keyApiRegion = 'setting_api_region';
   static const String keyCustomApiKey = 'setting_custom_api_key';

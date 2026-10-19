@@ -29,6 +29,14 @@ android {
     packaging {
         jniLibs {
             useLegacyPackaging = true
+            // axevpn_flutter ships 16 KB-aligned rebuilds of the WireGuard and
+            // tun2socks libraries alongside the stock copies from its AARs.
+            pickFirsts += listOf(
+                "**/libwg-go.so",
+                "**/libwg.so",
+                "**/libwg-quick.so",
+                "**/libtun2socks.so",
+            )
         }
     }
 

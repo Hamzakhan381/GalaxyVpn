@@ -65,4 +65,9 @@ abstract class PreferencesRepository {
   // Selected server cache
   String? get selectedServerJson;
   Future<void> setSelectedServerJson(String json);
+
+  /// JSON list of the last successfully fetched relays, used when the live
+  /// catalog cannot be reached.
+  String? get cachedRelayCatalog;
+  Future<void> setCachedRelayCatalog(String json);
 }

@@ -1,18 +1,24 @@
 import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+
 import '../../../domain/entities/vpn_connection_state.dart';
 import '../../../domain/entities/vpn_live_metrics.dart';
 import '../../../domain/entities/vpn_server.dart';
 import 'vpn_platform_data_source.dart';
 
-/// Concrete high-performance VpnPlatformDataSource implementation leveraging Android's
-/// native VpnService API via platform channels.
+/// SSTP tunnel driven by the app's own Android VpnService (`ShieldRouteVpnService`).
+///
+/// SSTP runs inside an ordinary TLS session, so it connects on networks whose
+/// deep packet inspection resets OpenVPN handshakes.
 class NativeVpnPlatformDataSource implements VpnPlatformDataSource {
-  static const MethodChannel _methodChannel =
-      MethodChannel('com.shieldroute.vpn/native_engine');
-  static const EventChannel _eventChannel =
-      EventChannel('com.shieldroute.vpn/events');
+  static const MethodChannel _methodChannel = MethodChannel(
+    'com.shieldroute.vpn/native_engine',
+  );
+  static const EventChannel _eventChannel = EventChannel(
+    'com.shieldroute.vpn/events',
+  );
 
   final StreamController<VpnConnectionState> _stateController =
       StreamController<VpnConnectionState>.broadcast();
@@ -23,6 +29,7 @@ class NativeVpnPlatformDataSource implements VpnPlatformDataSource {
   VpnLiveMetrics _currentMetrics = const VpnLiveMetrics();
   VpnServer? _currentServer;
   String? _lastError;
+  String? _lastErrorCode;
   bool _isInitialized = false;
 
   StreamSubscription? _eventSubscription;
@@ -47,6 +54,9 @@ class NativeVpnPlatformDataSource implements VpnPlatformDataSource {
   @override
   String? get lastError => _lastError;
 
+  /// Native failure category: `unreachable`, `tls`, `timeout`, `rejected`, ...
+  String? get lastErrorCode => _lastErrorCode;
+
   @override
   Future<void> initialize() async {
     if (_isInitialized) return;
@@ -61,17 +71,15 @@ class NativeVpnPlatformDataSource implements VpnPlatformDataSource {
 
       final state = await _methodChannel
           .invokeMethod<String>('getState')
-          .timeout(
-            const Duration(seconds: 2),
-            onTimeout: () => 'disconnected',
-          );
+          .timeout(const Duration(seconds: 2), onTimeout: () => 'disconnected');
       if (state == 'connected') {
         _updateState(VpnConnectionState.connected);
       }
       _isInitialized = true;
     } on MissingPluginException {
       debugPrint(
-          'NativeVpnPlatformDataSource running in test / non-Android environment.');
+        'NativeVpnPlatformDataSource running in test / non-Android environment.',
+      );
       _isInitialized = true;
     } catch (e) {
       debugPrint('NativeVpnPlatformDataSource initialize exception: $e');
@@ -103,6 +111,7 @@ class NativeVpnPlatformDataSource implements VpnPlatformDataSource {
           break;
         case 'error':
           _lastError = errorStr ?? 'Native tunnel connection failed';
+          _lastErrorCode = event['code'] as String?;
           _updateState(VpnConnectionState.error);
           break;
       }
@@ -147,6 +156,7 @@ class NativeVpnPlatformDataSource implements VpnPlatformDataSource {
   Future<void> connect(VpnServer server) async {
     _currentServer = server;
     _lastError = null;
+    _lastErrorCode = null;
     _mockFallbackTimer?.cancel();
     _updateState(VpnConnectionState.checking);
 
@@ -157,11 +167,13 @@ class NativeVpnPlatformDataSource implements VpnPlatformDataSource {
 
       // Request VPN permission. prepare() may show the system dialog and
       // return false while waiting; we use a short poll + timeout to handle it.
-      bool prepared = await _methodChannel.invokeMethod<bool>('prepare') ?? false;
+      bool prepared =
+          await _methodChannel.invokeMethod<bool>('prepare') ?? false;
 
       if (!prepared) {
         debugPrint(
-            'NativeVpnPlatformDataSource: Permission dialog shown – waiting for grant...');
+          'NativeVpnPlatformDataSource: Permission dialog shown – waiting for grant...',
+        );
         // Poll for up to 60 s while the user decides
         const pollInterval = Duration(milliseconds: 500);
         const maxWait = Duration(seconds: 60);
@@ -169,24 +181,35 @@ class NativeVpnPlatformDataSource implements VpnPlatformDataSource {
         while (!prepared && DateTime.now().isBefore(deadline)) {
           await Future<void>.delayed(pollInterval);
           try {
-            prepared = await _methodChannel.invokeMethod<bool>('prepare') ?? false;
+            prepared =
+                await _methodChannel.invokeMethod<bool>('prepare') ?? false;
           } catch (_) {
             break;
           }
         }
         if (!prepared) {
-          debugPrint('NativeVpnPlatformDataSource: VPN permission not granted.');
+          debugPrint(
+            'NativeVpnPlatformDataSource: VPN permission not granted.',
+          );
           _lastError = 'VPN permission was not granted.';
           _updateState(VpnConnectionState.error);
           return;
         }
       }
 
+      final hostname = server.sstpHostname;
+      if (hostname == null || hostname.isEmpty) {
+        _lastError = 'This relay does not support SSTP.';
+        _updateState(VpnConnectionState.error);
+        return;
+      }
       await _methodChannel.invokeMethod('connect', {
-        'serverName':
-            '${server.country} (${server.city.isNotEmpty ? server.city : "Fast Relay"})',
-        'serverHost': server.host,
-        'countryCode': server.countryCode,
+        'serverName': server.country,
+        'hostname': hostname,
+        'address': server.host,
+        'port': server.sstpPort,
+        'username': server.username,
+        'password': server.password,
       });
     } on MissingPluginException {
       _startMockTunnel(server);

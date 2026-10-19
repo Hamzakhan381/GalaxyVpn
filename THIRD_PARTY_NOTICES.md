@@ -4,11 +4,19 @@ This application incorporates open-source libraries and components. Below is the
 
 ---
 
-### 1. openvpn_flutter
-- **Version:** `^1.3.4`
-- **License:** MIT License
-- **Source:** [https://pub.dev/packages/openvpn_flutter](https://pub.dev/packages/openvpn_flutter)
-- **Role:** Flutter bridge for OpenVPN protocol tunnel negotiation and status monitoring on Android.
+### 1. axevpn_flutter
+- **Version:** `^3.1.0`
+- **License:** GNU General Public License v3.0
+- **Source:** [https://pub.dev/packages/axevpn_flutter](https://pub.dev/packages/axevpn_flutter)
+- **Role:** OpenVPN fallback engine (ics-openvpn / OpenVPN 2.7, built for 16 KB page-size devices). Bundles OpenVPN (GPLv2) and OpenSSL; distributing the app must respect these licenses.
+
+---
+
+### 1a. VPN Gate relay catalog
+- **Source:** [https://www.vpngate.net](https://www.vpngate.net) (University of Tsukuba)
+- **Role:** Public relay list and OpenVPN profiles. `assets/servers/vpngate_snapshot.csv` is a snapshot of VPN Gate's official `public-vpn-*` relays used as an offline fallback.
+
+The SSTP tunnel (`SstpTunnel.kt`) is original code implementing [MS-SSTP] and PPP (RFC 1661/1332/1334).
 
 ---
 

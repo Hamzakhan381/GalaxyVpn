@@ -5,7 +5,6 @@ export '../datasources/local/bundled_seed_relays_data_source.dart';
 class BundledSeedRelays {
   BundledSeedRelays._();
 
-  static List<VpnServer> getServers() {
-    return BundledSeedRelaysDataSource.getServers();
-  }
+  static Future<List<VpnServer>> getServers() =>
+      BundledSeedRelaysDataSource.loadServers();
 }

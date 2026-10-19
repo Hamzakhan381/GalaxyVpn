@@ -1,11 +1,8 @@
 package com.shieldroute.vpn.shieldroute_vpn
 
-import android.content.ComponentName
 import android.content.Intent
-import android.content.ServiceConnection
 import android.net.VpnService
-import android.os.IBinder
-import id.laskarmedia.openvpn_flutter.OpenVPNFlutterPlugin
+import android.os.Build
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.EventChannel
@@ -20,36 +17,6 @@ class MainActivity : FlutterActivity() {
     }
 
     private var pendingPermissionResult: MethodChannel.Result? = null
-    private var pendingConnectResult: MethodChannel.Result? = null
-    private var pendingConnectArgs: Map<*, *>? = null
-
-    private var vpnService: ShieldRouteVpnService? = null
-    private var isServiceBound = false
-
-    private var eventSink: EventChannel.EventSink? = null
-
-    private val serviceConnection = object : ServiceConnection {
-        override fun onServiceConnected(name: ComponentName?, binder: IBinder?) {
-            val localBinder = binder as? ShieldRouteVpnService.LocalBinder
-            vpnService = localBinder?.getService()
-            isServiceBound = true
-            vpnService?.setEventSink(eventSink)
-
-            // If we had a pending connect, execute it now
-            val args = pendingConnectArgs
-            val result = pendingConnectResult
-            pendingConnectArgs = null
-            pendingConnectResult = null
-            if (args != null && result != null) {
-                doConnect(args, result)
-            }
-        }
-
-        override fun onServiceDisconnected(name: ComponentName?) {
-            vpnService = null
-            isServiceBound = false
-        }
-    }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -57,12 +24,11 @@ class MainActivity : FlutterActivity() {
         EventChannel(flutterEngine.dartExecutor.binaryMessenger, EVENT_CHANNEL)
             .setStreamHandler(object : EventChannel.StreamHandler {
                 override fun onListen(arguments: Any?, events: EventChannel.EventSink?) {
-                    eventSink = events
-                    vpnService?.setEventSink(events)
+                    ShieldRouteVpnService.eventSink = events
                 }
+
                 override fun onCancel(arguments: Any?) {
-                    eventSink = null
-                    vpnService?.setEventSink(null)
+                    ShieldRouteVpnService.eventSink = null
                 }
             })
 
@@ -71,96 +37,59 @@ class MainActivity : FlutterActivity() {
                 when (call.method) {
                     "prepare" -> {
                         val intent = VpnService.prepare(this)
-                        if (intent != null) {
+                        if (intent == null) {
+                            result.success(true)
+                        } else if (pendingPermissionResult != null) {
+                            result.success(false)
+                        } else {
                             pendingPermissionResult = result
                             @Suppress("DEPRECATION")
                             startActivityForResult(intent, VPN_REQUEST_CODE)
-                        } else {
-                            result.success(true)
                         }
                     }
                     "connect" -> {
-                        val args = call.arguments as? Map<*, *>
-                        if (args == null) {
-                            result.error("INVALID_ARGS", "Missing connection arguments", null)
+                        if (VpnService.prepare(this) != null) {
+                            result.error("PERMISSION", "VPN permission has not been granted", null)
                             return@setMethodCallHandler
                         }
-                        if (!isServiceBound) {
-                            pendingConnectArgs = args
-                            pendingConnectResult = result
-                            bindVpnService()
+                        val intent = Intent(this, ShieldRouteVpnService::class.java)
+                            .setAction(ShieldRouteVpnService.ACTION_CONNECT)
+                            .putExtra(ShieldRouteVpnService.EXTRA_HOSTNAME, call.argument<String>("hostname"))
+                            .putExtra(ShieldRouteVpnService.EXTRA_ADDRESS, call.argument<String>("address"))
+                            .putExtra(ShieldRouteVpnService.EXTRA_PORT, call.argument<Int>("port") ?: 443)
+                            .putExtra(ShieldRouteVpnService.EXTRA_USERNAME, call.argument<String>("username"))
+                            .putExtra(ShieldRouteVpnService.EXTRA_PASSWORD, call.argument<String>("password"))
+                            .putExtra(ShieldRouteVpnService.EXTRA_SERVER_NAME, call.argument<String>("serverName"))
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                            startForegroundService(intent)
                         } else {
-                            doConnect(args, result)
-                        }
-                    }
-                    "disconnect" -> {
-                        if (isServiceBound) {
-                            vpnService?.disconnectVpn()
+                            startService(intent)
                         }
                         result.success(true)
                     }
-                    "getState" -> {
-                        val state = vpnService?.getConnectionState() ?: "disconnected"
-                        result.success(state)
+                    "disconnect" -> {
+                        if (ShieldRouteVpnService.currentState != "disconnected") {
+                            startService(
+                                Intent(this, ShieldRouteVpnService::class.java)
+                                    .setAction(ShieldRouteVpnService.ACTION_DISCONNECT),
+                            )
+                        }
+                        result.success(true)
                     }
+                    "getState" -> result.success(ShieldRouteVpnService.currentState)
                     else -> result.notImplemented()
                 }
             }
     }
 
-    private fun bindVpnService() {
-        val intent = Intent(this, ShieldRouteVpnService::class.java)
-        bindService(intent, serviceConnection, BIND_AUTO_CREATE)
-    }
-
-    private fun doConnect(args: Map<*, *>, result: MethodChannel.Result) {
-        val serverHost = args["serverHost"] as? String ?: ""
-        val serverName = args["serverName"] as? String ?: "VPN Server"
-        val countryCode = args["countryCode"] as? String ?: "US"
-
-        try {
-            vpnService?.connectVpn(serverHost, serverName, countryCode)
-            result.success(true)
-        } catch (e: Exception) {
-            result.error("CONNECT_FAILED", e.message, null)
-        }
-    }
-
+    @Deprecated("Deprecated in Java")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         if (requestCode == VPN_REQUEST_CODE) {
-            val granted = resultCode == RESULT_OK
-            pendingPermissionResult?.success(granted)
+            pendingPermissionResult?.success(resultCode == RESULT_OK)
             pendingPermissionResult = null
-
-            // If permission granted and there's a pending connect, proceed
-            if (granted) {
-                val args = pendingConnectArgs
-                val result = pendingConnectResult
-                pendingConnectArgs = null
-                pendingConnectResult = null
-                if (args != null && result != null) {
-                    if (!isServiceBound) {
-                        pendingConnectArgs = args
-                        pendingConnectResult = result
-                        bindVpnService()
-                    } else {
-                        doConnect(args, result)
-                    }
-                }
-            }
         }
-
-        if (requestCode == 24) {
-            OpenVPNFlutterPlugin.connectWhileGranted(resultCode == RESULT_OK)
-        }
+        // OpenVPN permission results (request code 24) are handled by the
+        // axevpn_flutter plugin's own ActivityResultListener.
         super.onActivityResult(requestCode, resultCode, data)
-    }
-
-    override fun onDestroy() {
-        if (isServiceBound) {
-            unbindService(serviceConnection)
-            isServiceBound = false
-        }
-        super.onDestroy()
     }
 }

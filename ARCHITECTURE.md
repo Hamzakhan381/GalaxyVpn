@@ -124,14 +124,15 @@ lib/
 ├── data/                                       # Data Layer implementations & platform adapters
 │   ├── datasources/
 │   │   ├── local/
-│   │   │   ├── bundled_seed_relays_data_source.dart # Offline relay fallbacks
+│   │   │   ├── bundled_seed_relays_data_source.dart # Snapshot of official VPN Gate relays
 │   │   │   └── preferences_local_data_source.dart   # SharedPreferences persistence
 │   │   ├── remote/
 │   │   │   └── server_remote_data_source.dart       # VPN Gate HTTPS registry and probes
 │   │   └── platform/
 │   │       ├── vpn_platform_data_source.dart        # Platform engine abstraction
-│   │       ├── openvpn_platform_data_source.dart    # openvpn_flutter driver
-│   │       └── unified_vpn_platform_data_source.dart# Intelligent engine coordinator
+│   │       ├── native_vpn_platform_data_source.dart # SSTP tunnel (ShieldRouteVpnService)
+│   │       ├── openvpn_platform_data_source.dart    # axevpn_flutter OpenVPN driver
+│   │       └── unified_vpn_platform_data_source.dart# SSTP first, OpenVPN fallback
 │   ├── models/
 │   │   ├── auth_user_model.dart                # Auth DTO
 │   │   ├── vpn_server_model.dart               # Server node DTO

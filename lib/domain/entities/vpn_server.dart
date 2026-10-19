@@ -12,6 +12,9 @@ class VpnServer {
   final int? speedBps;
   final int score;
   final String ovpnConfig;
+
+  /// TLS hostname for SSTP (`<relay>.opengw.net` for VPN Gate), if supported.
+  final String? sstpHostname;
   final String username;
   final String password;
   final bool isFavorite;
@@ -31,6 +34,7 @@ class VpnServer {
     this.speedBps,
     required this.score,
     required this.ovpnConfig,
+    this.sstpHostname,
     this.username = 'vpn',
     this.password = 'vpn',
     this.isFavorite = false,
@@ -51,6 +55,7 @@ class VpnServer {
     int? speedBps,
     int? score,
     String? ovpnConfig,
+    String? sstpHostname,
     String? username,
     String? password,
     bool? isFavorite,
@@ -70,6 +75,7 @@ class VpnServer {
       speedBps: speedBps ?? this.speedBps,
       score: score ?? this.score,
       ovpnConfig: ovpnConfig ?? this.ovpnConfig,
+      sstpHostname: sstpHostname ?? this.sstpHostname,
       username: username ?? this.username,
       password: password ?? this.password,
       isFavorite: isFavorite ?? this.isFavorite,
@@ -92,6 +98,7 @@ class VpnServer {
       'speedBps': speedBps,
       'score': score,
       'ovpnConfig': ovpnConfig,
+      'sstpHostname': sstpHostname,
       'username': username,
       'password': password,
       'isFavorite': isFavorite,
@@ -114,6 +121,7 @@ class VpnServer {
       speedBps: (json['speedBps'] as num?)?.toInt(),
       score: (json['score'] as num?)?.toInt() ?? 0,
       ovpnConfig: json['ovpnConfig'] as String? ?? '',
+      sstpHostname: json['sstpHostname'] as String?,
       username: json['username'] as String? ?? 'vpn',
       password: json['password'] as String? ?? 'vpn',
       isFavorite: json['isFavorite'] as bool? ?? false,
@@ -124,11 +132,19 @@ class VpnServer {
     );
   }
 
+  /// Whether this relay can be reached over SSTP (TLS on a TCP port).
+  bool get supportsSstp => sstpHostname != null && sstpHostname!.isNotEmpty;
+
+  /// VPN Gate serves SSTP on the same TCP listener it publishes for OpenVPN;
+  /// UDP-only relays fall back to the standard HTTPS port.
+  int get sstpPort => protocol.toUpperCase() == 'TCP' ? port : 443;
+
   /// Display string for latency
   String get pingDisplay => pingMs != null ? '$pingMs ms' : 'Not available';
 
   /// Display string for load percentage
-  String get loadDisplay => loadPercent != null ? '$loadPercent%' : 'Not available';
+  String get loadDisplay =>
+      loadPercent != null ? '$loadPercent%' : 'Not available';
 
   /// Bandwidth throughput speed in Mbps
   double get speedMbps =>
@@ -150,7 +166,6 @@ class VpnServer {
 
   /// Active connection estimate based on server load/score
   int get numVpnSessions => (score > 0 ? (score / 15).round() : 12);
-
 
   @override
   bool operator ==(Object other) =>

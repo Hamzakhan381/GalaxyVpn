@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 
@@ -10,7 +11,11 @@ import 'native_vpn_platform_data_source.dart';
 import 'openvpn_platform_data_source.dart';
 import 'vpn_platform_data_source.dart';
 
-/// Coordinates OpenVPN and Native tunnel implementations.
+/// Coordinates the SSTP (native) and OpenVPN tunnel implementations.
+///
+/// SSTP is tried first on Android because it survives networks that block
+/// OpenVPN; if it fails, the same relay is retried over OpenVPN before the
+/// error is reported.
 class UnifiedVpnPlatformDataSource implements VpnPlatformDataSource {
   final PreferencesRepository prefs;
   final OpenVpnPlatformDataSource _openVpnSource;
@@ -30,13 +35,22 @@ class UnifiedVpnPlatformDataSource implements VpnPlatformDataSource {
   VpnServer? _currentServer;
   String? _lastError;
 
+  /// Retry hook armed while an SSTP attempt may still fall back to OpenVPN.
+  /// Returns false when retrying is pointless and the error should surface.
+  bool Function()? _pendingFallback;
+
+  /// Whether the native SSTP engine exists on this platform.
+  final bool _sstpSupported;
+
   UnifiedVpnPlatformDataSource({
+    bool? sstpSupported,
     required this.prefs,
     OpenVpnPlatformDataSource? openVpnSource,
     NativeVpnPlatformDataSource? nativeVpnSource,
   }) : _openVpnSource =
            openVpnSource ?? OpenVpnPlatformDataSource(prefs: prefs),
-       _nativeVpnSource = nativeVpnSource ?? NativeVpnPlatformDataSource();
+       _nativeVpnSource = nativeVpnSource ?? NativeVpnPlatformDataSource(),
+       _sstpSupported = sstpSupported ?? Platform.isAndroid;
 
   @override
   VpnConnectionState get currentState => _currentState;
@@ -64,11 +78,13 @@ class UnifiedVpnPlatformDataSource implements VpnPlatformDataSource {
     ]);
     // Adopt a tunnel that is still up from a previous app session so the UI
     // reflects it and the user can disconnect it.
-    if (_openVpnSource.currentState == VpnConnectionState.connected) {
-      _bindSource(_openVpnSource);
-      _currentState = VpnConnectionState.connected;
-      _currentMetrics = _openVpnSource.currentMetrics;
-      return;
+    for (final source in [_nativeVpnSource, _openVpnSource]) {
+      if (source.currentState == VpnConnectionState.connected) {
+        _bindSource(source);
+        _currentState = VpnConnectionState.connected;
+        _currentMetrics = source.currentMetrics;
+        return;
+      }
     }
     _currentState = VpnConnectionState.disconnected;
     _currentMetrics = const VpnLiveMetrics();
@@ -80,6 +96,12 @@ class UnifiedVpnPlatformDataSource implements VpnPlatformDataSource {
     _activeSource = source;
 
     _activeStateSub = source.stateStream.listen((state) {
+      if (state == VpnConnectionState.error && _pendingFallback != null) {
+        final fallback = _pendingFallback!;
+        _pendingFallback = null;
+        if (fallback()) return;
+      }
+      if (state == VpnConnectionState.connected) _pendingFallback = null;
       _currentState = state;
       _lastError = source.lastError;
       _stateController.add(state);
@@ -103,20 +125,49 @@ class UnifiedVpnPlatformDataSource implements VpnPlatformDataSource {
   Future<void> connect(VpnServer server) async {
     _currentServer = server;
     _lastError = null;
+    _pendingFallback = null;
 
-    // The native stub tunnel installs a default route but forwards no packets,
-    // which would cut off the device's internet. All relays use OpenVPN.
-    final targetSource = _openVpnSource;
+    if (_sstpSupported && server.supportsSstp) {
+      debugPrint(
+        'UnifiedVpnPlatformDataSource: ${server.country} '
+        '(${server.sstpHostname}:${server.sstpPort}) via SSTP...',
+      );
+      if (server.ovpnConfig.isNotEmpty) {
+        _pendingFallback = () {
+          // A TCP relay that could not be reached over SSTP is just as
+          // unreachable over OpenVPN-TCP; let failover move to another relay.
+          if (_nativeVpnSource.lastErrorCode == 'unreachable' &&
+              server.protocol.toUpperCase() == 'TCP') {
+            return false;
+          }
+          debugPrint(
+            'UnifiedVpnPlatformDataSource: SSTP failed '
+            '(${_nativeVpnSource.lastError}); retrying over OpenVPN.',
+          );
+          unawaited(_connectWith(_openVpnSource, server));
+          return true;
+        };
+      }
+      await _connectWith(_nativeVpnSource, server);
+      return;
+    }
 
     debugPrint(
-      'UnifiedVpnPlatformDataSource: Routing ${server.country} (${server.host}) to OpenVPN engine...',
+      'UnifiedVpnPlatformDataSource: ${server.country} (${server.host}) via OpenVPN...',
     );
-    _bindSource(targetSource);
+    await _connectWith(_openVpnSource, server);
+  }
 
+  Future<void> _connectWith(
+    VpnPlatformDataSource source,
+    VpnServer server,
+  ) async {
+    _bindSource(source);
     try {
-      await targetSource.connect(server);
+      await source.connect(server);
     } catch (e) {
       debugPrint('UnifiedVpnPlatformDataSource: Connection error: $e');
+      _pendingFallback = null;
       _lastError = 'VPN connection error: $e';
       _currentState = VpnConnectionState.error;
       _stateController.add(_currentState);
@@ -125,6 +176,7 @@ class UnifiedVpnPlatformDataSource implements VpnPlatformDataSource {
 
   @override
   Future<void> disconnect() async {
+    _pendingFallback = null;
     if (_activeSource != null) {
       await _activeSource!.disconnect();
       _activeSource = null;

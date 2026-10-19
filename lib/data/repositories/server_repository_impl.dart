@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 
 import '../../domain/entities/server_sort_option.dart';
@@ -18,13 +21,14 @@ class ServerRepositoryImpl implements ServerRepository {
     required this.preferencesRepo,
   });
 
+  /// How many relays from a live catalog are persisted for offline use.
+  static const int _persistedCatalogSize = 40;
+
   @override
   Future<List<VpnServer>> getServers({bool forceRefresh = false}) async {
     if (_cachedServers.isNotEmpty && !forceRefresh) {
       return _applyFavorites(_cachedServers);
     }
-
-    final bundled = BundledSeedRelaysDataSource.getServers();
 
     try {
       final fetched = await remoteDataSource.fetchRelays(
@@ -32,19 +36,59 @@ class ServerRepositoryImpl implements ServerRepository {
         customApiKey: preferencesRepo.customApiKey,
       );
       if (fetched.isNotEmpty) {
-        // Bundled seeds are unverified placeholders; never mix them into a
-        // live catalog, where their inflated scores would win auto-selection.
         _cachedServers = fetched;
+        unawaited(_persistCatalog(fetched));
         return _applyFavorites(_cachedServers);
       }
     } catch (e) {
-      debugPrint(
-        'ServerRepositoryImpl: API fetch failed: $e. Falling back to bundled seeds.',
-      );
+      debugPrint('ServerRepositoryImpl: API fetch failed: $e');
     }
 
-    _cachedServers = bundled;
+    // Live catalog unreachable (slow link, blocked host): prefer the last
+    // catalog this device fetched, then the bundled official-relay snapshot.
+    final persisted = _loadPersistedCatalog();
+    if (persisted.isNotEmpty) {
+      debugPrint(
+        'ServerRepositoryImpl: using ${persisted.length} cached relays.',
+      );
+      _cachedServers = persisted;
+      return _applyFavorites(_cachedServers);
+    }
+
+    _cachedServers = await BundledSeedRelaysDataSource.loadServers();
+    debugPrint(
+      'ServerRepositoryImpl: using ${_cachedServers.length} bundled relays.',
+    );
     return _applyFavorites(_cachedServers);
+  }
+
+  Future<void> _persistCatalog(List<VpnServer> servers) async {
+    try {
+      final best = List<VpnServer>.from(servers)
+        ..sort((a, b) => b.score.compareTo(a.score));
+      final payload = best
+          .take(_persistedCatalogSize)
+          .map((s) => s.toJson())
+          .toList(growable: false);
+      await preferencesRepo.setCachedRelayCatalog(jsonEncode(payload));
+    } catch (e) {
+      debugPrint('ServerRepositoryImpl: could not cache catalog: $e');
+    }
+  }
+
+  List<VpnServer> _loadPersistedCatalog() {
+    final raw = preferencesRepo.cachedRelayCatalog;
+    if (raw == null || raw.isEmpty) return const [];
+    try {
+      return (jsonDecode(raw) as List)
+          .whereType<Map<String, dynamic>>()
+          .map(VpnServer.fromJson)
+          .where((s) => s.ovpnConfig.isNotEmpty)
+          .toList(growable: false);
+    } catch (e) {
+      debugPrint('ServerRepositoryImpl: cached catalog unreadable: $e');
+      return const [];
+    }
   }
 
   List<VpnServer> _applyFavorites(List<VpnServer> servers) {

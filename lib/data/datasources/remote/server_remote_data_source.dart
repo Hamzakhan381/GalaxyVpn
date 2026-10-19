@@ -67,7 +67,8 @@ class ServerRemoteDataSource {
     try {
       final response = await _httpClient
           .get(Uri.parse(endpoint), headers: const {'Accept': '*/*'})
-          .timeout(const Duration(seconds: 15));
+          // The catalog is ~1 MB; slow mobile links need more than 15 s.
+          .timeout(const Duration(seconds: 35));
       if (response.statusCode != 200 || response.body.isEmpty) return [];
 
       final csvServers = parseVpnGateCsv(response.body);
@@ -145,6 +146,7 @@ class ServerRemoteDataSource {
             loadPercent: null,
             score: score,
             ovpnConfig: ovpnDecoded,
+            sstpHostname: vpnGateSstpHostname(hostName),
             lastChecked: DateTime.now(),
           ),
         );
@@ -154,7 +156,20 @@ class ServerRemoteDataSource {
     return list;
   }
 
-  List<VpnServer> parseVpnGateCsv(String csvData) {
+  /// VPN Gate relays answer SSTP as `<hostname>.opengw.net`, with a valid
+  /// wildcard certificate for that domain.
+  static String? vpnGateSstpHostname(String hostName) {
+    final name = hostName.trim().toLowerCase();
+    if (name.isEmpty || !RegExp(r'^[a-z0-9-]+$').hasMatch(name)) return null;
+    return '$name.opengw.net';
+  }
+
+  List<VpnServer> parseVpnGateCsv(String csvData) =>
+      parseVpnGateCsvData(csvData);
+
+  /// Parses VPN Gate's CSV catalog format (also used for the bundled
+  /// snapshot of official relays).
+  static List<VpnServer> parseVpnGateCsvData(String csvData) {
     final List<VpnServer> list = [];
     final lines = const LineSplitter().convert(csvData);
 
@@ -218,6 +233,7 @@ class ServerRemoteDataSource {
             loadPercent: null,
             score: score,
             ovpnConfig: ovpnDecoded,
+            sstpHostname: vpnGateSstpHostname(hostName),
             lastChecked: DateTime.now(),
           ),
         );

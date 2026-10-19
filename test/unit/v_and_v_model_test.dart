@@ -52,21 +52,22 @@ void main() {
       expect(restored.speedDisplay, equals('923.5 Mbps'));
     });
 
-    test('VERIFICATION [V-2]: Bundled seed relays contain multi-location authentic profiles', () {
-      final seeds = BundledSeedRelays.getServers();
-      expect(seeds, isNotEmpty);
+    test('VERIFICATION [V-2]: Bundled fallback relays are genuine VPN Gate profiles', () async {
+      final seeds = await BundledSeedRelays.getServers();
       expect(seeds.length, greaterThanOrEqualTo(6));
 
-      // Verify presence of diverse geographical locations
-      final countryCodes = seeds.map((s) => s.countryCode).toSet();
-      expect(countryCodes.contains('JP'), isTrue, reason: 'Must have Asia/Japan relay');
-      expect(countryCodes.contains('US'), isTrue, reason: 'Must have North America/US relay');
-      expect(countryCodes.contains('DE'), isTrue, reason: 'Must have Europe/Germany relay');
-
-      // Verify that every seed config contains valid OpenVPN directives
       for (final seed in seeds) {
+        // Real VPN Gate profiles: embedded CA + client cert/key and a live
+        // remote endpoint (no placeholder or documentation-range addresses).
         expect(seed.ovpnConfig.contains('dev tun'), isTrue);
-        expect(seed.ovpnConfig.contains('remote '), isTrue);
+        expect(seed.ovpnConfig.contains('<ca>'), isTrue);
+        expect(seed.ovpnConfig.contains('<cert>'), isTrue);
+        expect(seed.ovpnConfig.contains('<key>'), isTrue);
+        expect(
+          RegExp(r'^remote \S+ \d+', multiLine: true).hasMatch(seed.ovpnConfig),
+          isTrue,
+        );
+        expect(seed.host.startsWith('198.51.100.'), isFalse);
         expect(seed.speedBps, isNotNull);
         expect(seed.speedBps!, greaterThan(1000000), reason: 'Seed bandwidth must be > 1 Mbps');
       }
@@ -147,7 +148,13 @@ auth SHA1
 
     test('VALIDATION [Val-1]: Multi-location geographical filtering matches selected regions', () async {
       await prefs.setApiRegion('Asia / Pacific');
-      final servers = await serverService.getServers();
+      // Mix of regions so the filter has something to exclude.
+      final relays = await serverService.getServers();
+      final servers = [
+        relays[0],
+        relays[1].copyWith(id: 'us_relay', country: 'United States', countryCode: 'US'),
+        relays[2].copyWith(id: 'de_relay', country: 'Germany', countryCode: 'DE'),
+      ];
       final filteredAsia = serverService.filterAndSort(servers: servers);
 
       final asiaCodes = {'JP', 'KR', 'SG', 'TH', 'VN', 'ID', 'TW', 'HK', 'MY', 'PH', 'IN'};

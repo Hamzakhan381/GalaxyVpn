@@ -31,8 +31,7 @@ class PreferencesRepositoryImpl implements PreferencesRepository {
     required String email,
     required String name,
     required bool isGuest,
-  }) =>
-      _dataSource.saveAuth(email: email, name: name, isGuest: isGuest);
+  }) => _dataSource.saveAuth(email: email, name: name, isGuest: isGuest);
 
   @override
   Future<void> clearAuth() => _dataSource.clearAuth();
@@ -86,15 +85,13 @@ class PreferencesRepositoryImpl implements PreferencesRepository {
   String? get customApiKey => _dataSource.customApiKey;
 
   @override
-  Future<bool> setCustomApiKey(String? val) =>
-      _dataSource.setCustomApiKey(val);
+  Future<bool> setCustomApiKey(String? val) => _dataSource.setCustomApiKey(val);
 
   @override
   String? get customApiUrl => _dataSource.customApiUrl;
 
   @override
-  Future<bool> setCustomApiUrl(String? val) =>
-      _dataSource.setCustomApiUrl(val);
+  Future<bool> setCustomApiUrl(String? val) => _dataSource.setCustomApiUrl(val);
 
   @override
   bool get turboSpeedMode => _dataSource.turboSpeedMode;
@@ -114,8 +111,7 @@ class PreferencesRepositoryImpl implements PreferencesRepository {
   bool get smartFailover => _dataSource.smartFailover;
 
   @override
-  Future<bool> setSmartFailover(bool val) =>
-      _dataSource.setSmartFailover(val);
+  Future<bool> setSmartFailover(bool val) => _dataSource.setSmartFailover(val);
 
   @override
   bool get killSwitch => _dataSource.killSwitch;
@@ -136,6 +132,13 @@ class PreferencesRepositoryImpl implements PreferencesRepository {
 
   @override
   String? get selectedServerJson => _dataSource.selectedServerJson;
+
+  @override
+  String? get cachedRelayCatalog => _dataSource.cachedRelayCatalog;
+
+  @override
+  Future<void> setCachedRelayCatalog(String json) =>
+      _dataSource.setCachedRelayCatalog(json);
 
   @override
   Future<void> setSelectedServerJson(String json) =>

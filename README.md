@@ -24,7 +24,7 @@
 - **Android Compile API:** 36
 - **Android Min SDK:** 24 (Android 7.0 Nougat)
 - **State Management:** Provider / ChangeNotifier
-- **VPN Core:** OpenVPN 2.5 protocol via `openvpn_flutter`
+- **VPN Core:** SSTP (TLS-wrapped, native `VpnService`) with OpenVPN 2.7 fallback via `axevpn_flutter`
 - **Typography:** Inter (Google Fonts)
 
 ---
@@ -54,7 +54,7 @@ Controller & Repository Layer (VpnRepository, ServerService, AuthService)
         ↓
 Service Abstraction Layer (VpnService contract)
         ↓
-Protocol Implementation (OpenVpnService via openvpn_flutter)
+Protocol Implementation (native SSTP VpnService → OpenVPN fallback via axevpn_flutter)
         ↓
 Android VpnService Subsystem (TUN interface)
 ```

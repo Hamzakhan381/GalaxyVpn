@@ -177,10 +177,15 @@ void main() {
         expect(repo.isLoadingServers, isFalse);
       });
 
-      test('auto-selects first server after load', () async {
+      test('auto-selects a server after load', () async {
         await repo.loadServers();
         expect(repo.selectedServer, isNotNull);
-        expect(repo.selectedServer, equals(repo.allServers.first));
+        expect(repo.allServers, contains(repo.selectedServer));
+        // With fastest-server auto-selection on, the pick is the fastest relay.
+        expect(
+          repo.selectedServer,
+          equals(prefs.autoFastestServer ? repo.fastestServer : repo.allServers.first),
+        );
       });
 
       test('does not overwrite manual selection on subsequent loads', () async {

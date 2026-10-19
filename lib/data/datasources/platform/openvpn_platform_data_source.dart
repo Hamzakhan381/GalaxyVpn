@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
-import 'package:openvpn_flutter/openvpn_flutter.dart';
+import 'package:axevpn_flutter/openvpn_flutter.dart';
 
 import '../../../domain/entities/vpn_connection_state.dart';
 import '../../../domain/entities/vpn_live_metrics.dart';
@@ -10,7 +10,8 @@ import '../../../domain/entities/vpn_server.dart';
 import '../../../domain/repositories/preferences_repository.dart';
 import 'vpn_platform_data_source.dart';
 
-/// OpenVPN tunnel implementation backed by the Android OpenVPN engine.
+/// OpenVPN tunnel implementation backed by the axevpn_flutter engine
+/// (ics-openvpn / OpenVPN 2.7, built for 16 KB page-size devices).
 class OpenVpnPlatformDataSource implements VpnPlatformDataSource {
   final PreferencesRepository? prefs;
   OpenVPN? _engine;
@@ -241,9 +242,10 @@ class OpenVpnPlatformDataSource implements VpnPlatformDataSource {
       if (_engine != null && _engine!.initialized) {
         // The plugin requests VPN permission itself as part of connect().
 
-        // Inline <ca>/<cert>/<key> profiles do NOT require external Android KeyChain certs.
-        // certIsRequired=true forces Android KeyChain prompt and fails on standard relays.
-        final bool certIsRequired = false;
+        // With certIsRequired=false the plugin appends `client-cert-not-required`,
+        // a server-only directive. Profiles that embed their own <cert>/<key>
+        // (all VPN Gate relays) must be passed through untouched.
+        final certIsRequired = server.ovpnConfig.contains('<cert>');
         final isTurbo = prefs?.turboSpeedMode ?? true;
         final preparedConfig = optimizeConfig(
           server.ovpnConfig,

@@ -1,6 +1,8 @@
 import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
 import '../../../../core/constants/app_constants.dart';
 
 /// Local data source encapsulating persistent key-value storage via SharedPreferences
@@ -71,8 +73,7 @@ class PreferencesLocalDataSource {
   }
 
   // Settings
-  bool get autoConnect =>
-      _prefs.getBool(AppConstants.keyAutoConnect) ?? false;
+  bool get autoConnect => _prefs.getBool(AppConstants.keyAutoConnect) ?? false;
 
   Future<bool> setAutoConnect(bool val) =>
       _prefs.setBool(AppConstants.keyAutoConnect, val);
@@ -128,8 +129,7 @@ class PreferencesLocalDataSource {
     return _prefs.setString(AppConstants.keyCustomApiUrl, val.trim());
   }
 
-  bool get turboSpeedMode =>
-      _prefs.getBool(AppConstants.keyTurboSpeed) ?? true;
+  bool get turboSpeedMode => _prefs.getBool(AppConstants.keyTurboSpeed) ?? true;
 
   Future<bool> setTurboSpeedMode(bool val) =>
       _prefs.setBool(AppConstants.keyTurboSpeed, val);
@@ -146,8 +146,7 @@ class PreferencesLocalDataSource {
   Future<bool> setSmartFailover(bool val) =>
       _prefs.setBool(AppConstants.keySmartFailover, val);
 
-  bool get killSwitch =>
-      _prefs.getBool(AppConstants.keyKillSwitch) ?? false;
+  bool get killSwitch => _prefs.getBool(AppConstants.keyKillSwitch) ?? false;
 
   Future<bool> setKillSwitch(bool val) =>
       _prefs.setBool(AppConstants.keyKillSwitch, val);
@@ -164,7 +163,9 @@ class PreferencesLocalDataSource {
     }
   }
 
-  Future<void> saveSessionHistoryJson(List<Map<String, dynamic>> sessions) async {
+  Future<void> saveSessionHistoryJson(
+    List<Map<String, dynamic>> sessions,
+  ) async {
     final raw = jsonEncode(sessions);
     await _prefs.setString(AppConstants.keySessionsHistory, raw);
   }
@@ -176,6 +177,12 @@ class PreferencesLocalDataSource {
   // Selected Server Cache
   String? get selectedServerJson =>
       _prefs.getString(AppConstants.keySelectedServer);
+
+  String? get cachedRelayCatalog =>
+      _prefs.getString(AppConstants.keyRelayCatalogCache);
+
+  Future<void> setCachedRelayCatalog(String json) =>
+      _prefs.setString(AppConstants.keyRelayCatalogCache, json);
 
   Future<void> setSelectedServerJson(String json) =>
       _prefs.setString(AppConstants.keySelectedServer, json);

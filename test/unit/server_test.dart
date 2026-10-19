@@ -13,23 +13,24 @@ void main() {
 
     setUp(() async {
       SharedPreferences.setMockInitialValues({
-        'favorite_server_ids': ['seed_jp_01'],
+        'favorite_server_ids': ['vpngate_219.100.37.98_443_tcp'],
       });
       prefs = await PreferencesService.create();
       serverService = DefaultServerService(prefs);
     });
 
-    test('Loads academic seed servers with valid attributes', () async {
+    test('Falls back to bundled VPN Gate relays when the catalog is unreachable', () async {
       final servers = await serverService.getServers();
-      expect(servers, isNotEmpty);
-      expect(servers.length, greaterThanOrEqualTo(5));
+      expect(servers.length, greaterThanOrEqualTo(6));
 
-      final jpServer = servers.firstWhere((s) => s.id == 'seed_jp_01');
-      expect(jpServer.country, equals('Japan'));
-      expect(jpServer.countryCode, equals('JP'));
-      expect(jpServer.isFavorite, isTrue);
-      expect(jpServer.pingMs, isNotNull);
-      expect(jpServer.pingDisplay, equals('24 ms'));
+      final relay = servers.firstWhere((s) => s.id == 'vpngate_219.100.37.98_443_tcp');
+      expect(relay.country, equals('Japan'));
+      expect(relay.countryCode, equals('JP'));
+      expect(relay.isFavorite, isTrue);
+      expect(relay.pingMs, isNotNull);
+      expect(relay.sstpHostname, equals('public-vpn-108.opengw.net'));
+      expect(relay.sstpPort, equals(443));
+      expect(servers.every((s) => s.supportsSstp), isTrue);
     });
 
     test('Never invents fake metrics when ping is missing', () {
@@ -56,11 +57,11 @@ void main() {
       final servers = await serverService.getServers();
       final filtered = serverService.filterAndSort(
         servers: servers,
-        query: 'germany',
+        query: 'public-vpn-108',
       );
 
-      expect(filtered.every((s) => s.country.toLowerCase().contains('germany')), isTrue);
       expect(filtered.length, equals(1));
+      expect(filtered.single.city, equals('public-vpn-108'));
     });
 
     test('Filters servers correctly by protocol', () async {
@@ -89,11 +90,12 @@ void main() {
     });
 
     test('Toggles server favorite status persistently', () async {
-      await serverService.toggleFavorite('seed_us_01');
+      await serverService.getServers();
+      await serverService.toggleFavorite('vpngate_219.100.37.49_443_tcp');
       final updatedServers = await serverService.getServers();
-      final usServer = updatedServers.firstWhere((s) => s.id == 'seed_us_01');
-      expect(usServer.isFavorite, isTrue);
-      expect(prefs.favoriteServerIds.contains('seed_us_01'), isTrue);
+      final relay = updatedServers.firstWhere((s) => s.id == 'vpngate_219.100.37.49_443_tcp');
+      expect(relay.isFavorite, isTrue);
+      expect(prefs.favoriteServerIds.contains('vpngate_219.100.37.49_443_tcp'), isTrue);
     });
   });
 }
