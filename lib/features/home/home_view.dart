@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -26,7 +28,61 @@ class HomeView extends StatefulWidget {
   State<HomeView> createState() => _HomeViewState();
 }
 
-class _HomeViewState extends State<HomeView> {
+class _HomeViewState extends State<HomeView> with TickerProviderStateMixin {
+  final ScrollController _scroll = ScrollController();
+
+  /// One-shot green shockwave played when the tunnel comes up.
+  late final AnimationController _celebrate = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1100),
+  );
+
+  /// Horizontal shake for the error banner when a connection fails.
+  late final AnimationController _shake = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 520),
+  );
+
+  late final VpnRepository _vpnRepo;
+  late VpnConnectionState _lastState;
+
+  @override
+  void initState() {
+    super.initState();
+    _vpnRepo = context.read<VpnRepository>();
+    _lastState = _vpnRepo.connectionState;
+    _vpnRepo.addListener(_onVpnChanged);
+  }
+
+  void _onVpnChanged() {
+    final state = _vpnRepo.connectionState;
+    if (state == _lastState) return;
+    _lastState = state;
+    if (!mounted) return;
+
+    if (state == VpnConnectionState.connected) {
+      HapticFeedback.heavyImpact();
+      if (!Motion.isReduced(context)) _celebrate.forward(from: 0);
+    } else if (state == VpnConnectionState.error) {
+      HapticFeedback.vibrate();
+      if (!Motion.isReduced(context)) _shake.forward(from: 0);
+    }
+  }
+
+  @override
+  void dispose() {
+    _vpnRepo.removeListener(_onVpnChanged);
+    _scroll.dispose();
+    _celebrate.dispose();
+    _shake.dispose();
+    super.dispose();
+  }
+
+  Future<void> _refresh() async {
+    HapticFeedback.mediumImpact();
+    await _vpnRepo.detectFastestServer(forceProbe: true);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Consumer<VpnRepository>(
@@ -52,169 +108,219 @@ class _HomeViewState extends State<HomeView> {
         return Scaffold(
           backgroundColor: Colors.transparent,
           extendBodyBehindAppBar: true,
-          appBar: _buildAppBar(context),
+          appBar: _buildAppBar(context, state),
           body: CyberBackground(
             glowAccentColor: themeAccent,
             vpnState: state,
             child: SafeArea(
-              child: SingleChildScrollView(
-                physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 12,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    const SizedBox(height: 8),
+              child: RefreshIndicator(
+                onRefresh: _refresh,
+                color: AppColors.primaryText,
+                backgroundColor: AppColors.elevatedSurface,
+                child: SingleChildScrollView(
+                  controller: _scroll,
+                  physics: const AlwaysScrollableScrollPhysics(
+                    parent: BouncingScrollPhysics(),
+                  ),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 12,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      const SizedBox(height: 8),
 
-                    // ── Status badge ────────────────────────────────────────
-                    AnimatedFadeSlide(
-                      child: ConnectionStatusBadge(state: state),
-                    ),
-                    const SizedBox(height: 18),
-
-                    // ── Headline text (animated switch) ─────────────────────
-                    AnimatedFadeSlide(
-                      delayMs: Motion.staggerStepMs,
-                      child: _AnimatedStatusText(
-                        isConnected: isConnected,
-                        isConnecting: isConnecting,
-                        isDisconnecting: isDisconnecting,
-                        isError: isError,
-                        countryName: selectedServer?.country,
+                      // ── Status badge ────────────────────────────────────────
+                      AnimatedFadeSlide(
+                        child: ConnectionStatusBadge(state: state),
                       ),
-                    ),
+                      const SizedBox(height: 18),
 
-                    const SizedBox(height: 28),
-
-                    // ── Central animated connect/disconnect button ───────────
-                    AnimatedFadeSlide(
-                      delayMs: Motion.staggerStepMs * 2,
-                      duration: Motion.slow,
-                      offset: const Offset(0, 0.04),
-                      beginScale: 0.82,
-                      child: ConnectionOrb(
-                        state: state,
-                        connectingCountry: selectedServer?.country,
-                        onTap: () {
-                          HapticFeedback.mediumImpact();
-                          if (isConnected || isConnecting) {
-                            vpnRepo.disconnect();
-                          } else if (!isDisconnecting) {
-                            vpnRepo.connect();
-                          }
-                        },
+                      // ── Headline text (animated switch) ─────────────────────
+                      AnimatedFadeSlide(
+                        delayMs: Motion.staggerStepMs,
+                        child: _AnimatedStatusText(
+                          isConnected: isConnected,
+                          isConnecting: isConnecting,
+                          isDisconnecting: isDisconnecting,
+                          isError: isError,
+                          countryName: selectedServer?.country,
+                        ),
                       ),
-                    ),
 
-                    const SizedBox(height: 28),
+                      const SizedBox(height: 28),
 
-                    // ── Fastest Server Auto-Detect & Suggestion Card ─────────
-                    AnimatedFadeSlide(
-                      delayMs: Motion.staggerStepMs * 3,
-                      child: FastestServerCard(
-                        vpnRepo: vpnRepo,
-                        onConnect: () => vpnRepo.connectToFastestServer(),
-                        onServerDetails: () {
-                          if (vpnRepo.fastestServer != null) {
-                            showModalBottomSheet(
-                              context: context,
-                              isScrollControlled: true,
-                              backgroundColor: Colors.transparent,
-                              builder: (_) => ServerDetailsSheet(
-                                server: vpnRepo.fastestServer!,
-                                onConnect: () {
-                                  Navigator.of(context).pop();
-                                  vpnRepo.selectServer(vpnRepo.fastestServer!);
-                                  vpnRepo.connect();
-                                },
-                              ),
-                            );
-                          }
-                        },
+                      // ── Central animated connect/disconnect button ───────────
+                      AnimatedFadeSlide(
+                        delayMs: Motion.staggerStepMs * 2,
+                        duration: Motion.slow,
+                        offset: const Offset(0, 0.04),
+                        beginScale: 0.82,
+                        child: _OrbStage(
+                          scroll: _scroll,
+                          celebrate: _celebrate,
+                          child: ConnectionOrb(
+                            state: state,
+                            connectingCountry: selectedServer?.country,
+                            onTap: () {
+                              HapticFeedback.mediumImpact();
+                              if (isConnected || isConnecting) {
+                                vpnRepo.disconnect();
+                              } else if (!isDisconnecting) {
+                                vpnRepo.connect();
+                              }
+                            },
+                          ),
+                        ),
                       ),
-                    ),
 
-                    // ── Selected Server Card ────────────────────────────────
-                    AnimatedFadeSlide(
-                      delayMs: Motion.staggerStepMs * 4,
-                      child: selectedServer != null
-                          ? _buildServerCard(
-                              context,
-                              vpnRepo,
-                              selectedServer,
-                              isConnected,
-                              isConnecting,
-                            )
-                          : _buildNoServerCard(context, vpnRepo),
-                    ),
+                      const SizedBox(height: 28),
 
-                    const SizedBox(height: 18),
+                      // ── Fastest Server Auto-Detect & Suggestion Card ─────────
+                      AnimatedFadeSlide(
+                        delayMs: Motion.staggerStepMs * 3,
+                        child: FastestServerCard(
+                          vpnRepo: vpnRepo,
+                          onConnect: () => vpnRepo.connectToFastestServer(),
+                          onServerDetails: () {
+                            if (vpnRepo.fastestServer != null) {
+                              showModalBottomSheet(
+                                context: context,
+                                isScrollControlled: true,
+                                backgroundColor: Colors.transparent,
+                                builder: (_) => ServerDetailsSheet(
+                                  server: vpnRepo.fastestServer!,
+                                  onConnect: () {
+                                    Navigator.of(context).pop();
+                                    vpnRepo.selectServer(
+                                      vpnRepo.fastestServer!,
+                                    );
+                                    vpnRepo.connect();
+                                  },
+                                ),
+                              );
+                            }
+                          },
+                        ),
+                      ),
 
-                    // ── Animated Switcher for Live Metrics vs Spec HUD ──────
-                    AnimatedFadeSlide(
-                      delayMs: Motion.staggerStepMs * 5,
-                      child: AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 350),
-                        switchInCurve: Curves.easeOutCubic,
-                        switchOutCurve: Curves.easeInCubic,
-                        transitionBuilder: (child, animation) {
-                          return FadeTransition(
-                            opacity: animation,
+                      // ── Selected Server Card ────────────────────────────────
+                      AnimatedFadeSlide(
+                        delayMs: Motion.staggerStepMs * 4,
+                        child: AnimatedSwitcher(
+                          duration: Motion.medium,
+                          switchInCurve: Curves.easeOutCubic,
+                          switchOutCurve: Curves.easeInCubic,
+                          transitionBuilder: (child, anim) => FadeTransition(
+                            opacity: anim,
                             child: SlideTransition(
                               position: Tween<Offset>(
-                                begin: const Offset(0.0, 0.06),
+                                begin: const Offset(0.12, 0),
                                 end: Offset.zero,
-                              ).animate(animation),
+                              ).animate(anim),
                               child: child,
                             ),
-                          );
-                        },
-                        child: isConnected
-                            ? _ConnectedMetricsPanel(
-                                key: const ValueKey('metrics_panel'),
-                                metrics: metrics,
-                                server: selectedServer,
-                                onSwitchServer: widget.onNavigateToServers,
+                          ),
+                          child: selectedServer != null
+                              ? PressableScale(
+                                  key: ValueKey(selectedServer.id),
+                                  pressedScale: 0.98,
+                                  child: _buildServerCard(
+                                    context,
+                                    vpnRepo,
+                                    selectedServer,
+                                    isConnected,
+                                    isConnecting,
+                                  ),
+                                )
+                              : KeyedSubtree(
+                                  key: const ValueKey('no_server'),
+                                  child: _buildNoServerCard(context, vpnRepo),
+                                ),
+                        ),
+                      ),
+
+                      const SizedBox(height: 18),
+
+                      // ── Animated Switcher for Live Metrics vs Spec HUD ──────
+                      AnimatedFadeSlide(
+                        delayMs: Motion.staggerStepMs * 5,
+                        child: AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 350),
+                          switchInCurve: Curves.easeOutCubic,
+                          switchOutCurve: Curves.easeInCubic,
+                          transitionBuilder: (child, animation) {
+                            return FadeTransition(
+                              opacity: animation,
+                              child: SlideTransition(
+                                position: Tween<Offset>(
+                                  begin: const Offset(0.0, 0.06),
+                                  end: Offset.zero,
+                                ).animate(animation),
+                                child: child,
+                              ),
+                            );
+                          },
+                          child: isConnected
+                              ? _ConnectedMetricsPanel(
+                                  key: const ValueKey('metrics_panel'),
+                                  metrics: metrics,
+                                  server: selectedServer,
+                                  onSwitchServer: widget.onNavigateToServers,
+                                )
+                              : !isConnecting
+                              ? _buildNetworkInfoCard(selectedServer)
+                              : const SizedBox.shrink(
+                                  key: ValueKey('connecting_spacer'),
+                                ),
+                        ),
+                      ),
+
+                      // ── Error banner ────────────────────────────────────────
+                      AnimatedSize(
+                        duration: Motion.medium,
+                        curve: Curves.easeOutCubic,
+                        child: isError
+                            ? Padding(
+                                padding: const EdgeInsets.only(top: 16),
+                                child: AnimatedFadeSlide(
+                                  beginScale: 0.94,
+                                  child: AnimatedBuilder(
+                                    animation: _shake,
+                                    child: _buildErrorBanner(context, vpnRepo),
+                                    builder: (context, child) {
+                                      final t = _shake.value;
+                                      final dx =
+                                          math.sin(t * math.pi * 8) *
+                                          10 *
+                                          (1 - t);
+                                      return Transform.translate(
+                                        offset: Offset(dx, 0),
+                                        child: child,
+                                      );
+                                    },
+                                  ),
+                                ),
                               )
-                            : !isConnecting
-                            ? _buildNetworkInfoCard(selectedServer)
-                            : const SizedBox.shrink(
-                                key: ValueKey('connecting_spacer'),
-                              ),
+                            : const SizedBox(width: double.infinity),
                       ),
-                    ),
 
-                    // ── Error banner ────────────────────────────────────────
-                    AnimatedSize(
-                      duration: Motion.medium,
-                      curve: Curves.easeOutCubic,
-                      child: isError
-                          ? Padding(
-                              padding: const EdgeInsets.only(top: 16),
-                              child: AnimatedFadeSlide(
-                                beginScale: 0.94,
-                                child: _buildErrorBanner(context, vpnRepo),
-                              ),
-                            )
-                          : const SizedBox(width: double.infinity),
-                    ),
+                      const SizedBox(height: 24),
 
-                    const SizedBox(height: 24),
-
-                    // ── Academic Context & Disclaimer ───────────────────────
-                    Text(
-                      AppConstants.publicRelayDisclaimer,
-                      style: AppTextStyles.bodyMd.copyWith(
-                        color: AppColors.mutedText,
-                        fontSize: 10,
-                        letterSpacing: 0.3,
+                      // ── Academic Context & Disclaimer ───────────────────────
+                      Text(
+                        AppConstants.publicRelayDisclaimer,
+                        style: AppTextStyles.bodyMd.copyWith(
+                          color: AppColors.mutedText,
+                          fontSize: 10,
+                          letterSpacing: 0.3,
+                        ),
+                        textAlign: TextAlign.center,
                       ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 12),
-                  ],
+                      const SizedBox(height: 12),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -226,7 +332,10 @@ class _HomeViewState extends State<HomeView> {
 
   // ── AppBar ─────────────────────────────────────────────────────────────────
 
-  PreferredSizeWidget _buildAppBar(BuildContext context) {
+  PreferredSizeWidget _buildAppBar(
+    BuildContext context,
+    VpnConnectionState state,
+  ) {
     return AppBar(
       backgroundColor: Colors.transparent,
       elevation: 0,
@@ -234,20 +343,7 @@ class _HomeViewState extends State<HomeView> {
       title: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Container(
-            width: 26,
-            height: 26,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: AppColors.elevatedSurface,
-              border: Border.all(color: AppColors.borderDivider, width: 1.0),
-            ),
-            child: const Icon(
-              Icons.shield_rounded,
-              size: 14,
-              color: AppColors.primaryText,
-            ),
-          ),
+          _AppBarShield(state: state),
           const SizedBox(width: 8),
           Text(
             AppConstants.appName,
@@ -621,6 +717,7 @@ class _HomeViewState extends State<HomeView> {
             children: [
               Expanded(
                 child: _buildFeaturePill(
+                  0,
                   Icons.lock_rounded,
                   'OpenVPN',
                   'Encrypted tunnel',
@@ -629,6 +726,7 @@ class _HomeViewState extends State<HomeView> {
               const SizedBox(width: 10),
               Expanded(
                 child: _buildFeaturePill(
+                  1,
                   Icons.vpn_lock_rounded,
                   'Public relay',
                   'Third-party operated',
@@ -641,6 +739,7 @@ class _HomeViewState extends State<HomeView> {
             children: [
               Expanded(
                 child: _buildFeaturePill(
+                  2,
                   Icons.verified_user_outlined,
                   'Relay logging',
                   'Operator policy applies',
@@ -649,6 +748,7 @@ class _HomeViewState extends State<HomeView> {
               const SizedBox(width: 10),
               Expanded(
                 child: _buildFeaturePill(
+                  3,
                   Icons.security_rounded,
                   'Relay DNS',
                   'Profile configured',
@@ -672,7 +772,21 @@ class _HomeViewState extends State<HomeView> {
     );
   }
 
-  Widget _buildFeaturePill(IconData icon, String title, String subtitle) {
+  Widget _buildFeaturePill(
+    int order,
+    IconData icon,
+    String title,
+    String subtitle,
+  ) {
+    return AnimatedFadeSlide(
+      delayMs: 120 + order * 70,
+      beginScale: 0.9,
+      offset: const Offset(0, 0.15),
+      child: _buildFeaturePillBody(icon, title, subtitle),
+    );
+  }
+
+  Widget _buildFeaturePillBody(IconData icon, String title, String subtitle) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
@@ -1061,29 +1175,45 @@ class _ConnectedMetricsPanelState extends State<_ConnectedMetricsPanel>
               physics: const NeverScrollableScrollPhysics(),
               childAspectRatio: 1.55,
               children: [
-                _CyberMetricTile(
-                  icon: Icons.timer_outlined,
-                  label: 'Duration',
-                  value: m.duration ?? '00:00',
-                  accent: AppColors.primaryText,
+                AnimatedFadeSlide(
+                  delayMs: 0 * Motion.staggerStepMs,
+                  beginScale: 0.9,
+                  child: _CyberMetricTile(
+                    icon: Icons.timer_outlined,
+                    label: 'Duration',
+                    value: m.duration ?? '00:00',
+                    accent: AppColors.primaryText,
+                  ),
                 ),
-                _CyberMetricTile(
-                  icon: Icons.speed_rounded,
-                  label: 'Latency',
-                  value: widget.server?.pingDisplay ?? '—',
-                  accent: AppColors.connectedStatus,
+                AnimatedFadeSlide(
+                  delayMs: 1 * Motion.staggerStepMs,
+                  beginScale: 0.9,
+                  child: _CyberMetricTile(
+                    icon: Icons.speed_rounded,
+                    label: 'Latency',
+                    value: widget.server?.pingDisplay ?? '—',
+                    accent: AppColors.connectedStatus,
+                  ),
                 ),
-                _CyberMetricTile(
-                  icon: Icons.arrow_downward_rounded,
-                  label: 'Downloaded',
-                  value: _formatBytes(m.byteIn),
-                  accent: AppColors.secondaryText,
+                AnimatedFadeSlide(
+                  delayMs: 2 * Motion.staggerStepMs,
+                  beginScale: 0.9,
+                  child: _CyberMetricTile(
+                    icon: Icons.arrow_downward_rounded,
+                    label: 'Downloaded',
+                    value: _formatBytes(m.byteIn),
+                    accent: AppColors.secondaryText,
+                  ),
                 ),
-                _CyberMetricTile(
-                  icon: Icons.arrow_upward_rounded,
-                  label: 'Uploaded',
-                  value: _formatBytes(m.byteOut),
-                  accent: AppColors.secondaryText,
+                AnimatedFadeSlide(
+                  delayMs: 3 * Motion.staggerStepMs,
+                  beginScale: 0.9,
+                  child: _CyberMetricTile(
+                    icon: Icons.arrow_upward_rounded,
+                    label: 'Uploaded',
+                    value: _formatBytes(m.byteOut),
+                    accent: AppColors.secondaryText,
+                  ),
                 ),
               ],
             ),
@@ -1169,15 +1299,8 @@ class _ConnectedMetricsPanelState extends State<_ConnectedMetricsPanel>
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Container(
-                  width: 6,
-                  height: 6,
-                  decoration: const BoxDecoration(
-                    color: AppColors.connectedStatus,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-                const SizedBox(width: 6),
+                const PulsingDot(color: AppColors.connectedStatus),
+                const SizedBox(width: 4),
                 Text(
                   'Encrypted',
                   style: AppTextStyles.labelSm.copyWith(
@@ -1269,29 +1392,219 @@ class _CyberMetricTile extends StatelessWidget {
                 ),
               ),
               if (isLivePing)
-                Container(
-                  width: 6,
-                  height: 6,
-                  decoration: const BoxDecoration(
-                    color: AppColors.connectedStatus,
-                    shape: BoxShape.circle,
-                  ),
-                ),
+                const PulsingDot(color: AppColors.connectedStatus),
             ],
           ),
           const SizedBox(height: 8),
-          Text(
-            value,
-            style: AppTextStyles.metricLg.copyWith(
-              color: AppColors.primaryText,
-              fontSize: 18,
-              fontWeight: FontWeight.w800,
-              letterSpacing: -0.3,
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: OdometerText(
+              value,
+              style: AppTextStyles.metricLg.copyWith(
+                color: AppColors.primaryText,
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+                letterSpacing: -0.3,
+              ),
             ),
-            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),
     );
   }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// _AppBarShield  –  Brand mark that reflects the live tunnel state
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _AppBarShield extends StatelessWidget {
+  final VpnConnectionState state;
+
+  const _AppBarShield({required this.state});
+
+  @override
+  Widget build(BuildContext context) {
+    final isConnected = state == VpnConnectionState.connected;
+    final isConnecting =
+        state == VpnConnectionState.connecting ||
+        state == VpnConnectionState.checking;
+    final isError = state == VpnConnectionState.error;
+
+    final accent = isConnected
+        ? AppColors.connectedStatus
+        : isError
+        ? AppColors.errorStatus
+        : AppColors.primaryText;
+    final icon = isConnected
+        ? Icons.verified_user_rounded
+        : isError
+        ? Icons.gpp_maybe_rounded
+        : Icons.shield_rounded;
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 400),
+      curve: Curves.easeOutCubic,
+      width: 28,
+      height: 28,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: AppColors.elevatedSurface,
+        border: Border.all(
+          color: isConnected || isError
+              ? accent.withValues(alpha: 0.6)
+              : AppColors.borderDivider,
+          width: 1.0,
+        ),
+        boxShadow: [
+          if (isConnected)
+            BoxShadow(
+              color: accent.withValues(alpha: 0.35),
+              blurRadius: 12,
+              spreadRadius: 1,
+            ),
+        ],
+      ),
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          if (isConnecting)
+            const SizedBox.square(
+              dimension: 26,
+              child: CircularProgressIndicator(
+                strokeWidth: 1.4,
+                color: AppColors.secondaryText,
+              ),
+            ),
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 350),
+            transitionBuilder: (child, anim) => RotationTransition(
+              turns: Tween<double>(begin: -0.25, end: 0).animate(anim),
+              child: ScaleTransition(
+                scale: CurvedAnimation(parent: anim, curve: Curves.easeOutBack),
+                child: child,
+              ),
+            ),
+            child: Icon(icon, key: ValueKey(icon), size: 14, color: accent),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// _OrbStage  –  Scroll parallax + connect celebration around the orb
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _OrbStage extends StatelessWidget {
+  final ScrollController scroll;
+  final Animation<double> celebrate;
+  final Widget child;
+
+  const _OrbStage({
+    required this.scroll,
+    required this.celebrate,
+    required this.child,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final reduced = Motion.isReduced(context);
+
+    return AnimatedBuilder(
+      animation: Listenable.merge([scroll, celebrate]),
+      child: child,
+      builder: (context, child) {
+        final offset = scroll.hasClients ? scroll.offset : 0.0;
+        double scale = 1.0;
+        double opacity = 1.0;
+        double shift = 0.0;
+        if (!reduced) {
+          if (offset > 0) {
+            final t = (offset / 400).clamp(0.0, 1.0);
+            scale = 1.0 - 0.15 * t;
+            opacity = 1.0 - 0.5 * t;
+            shift = offset * 0.3;
+          } else {
+            // Pulling down gently inflates the orb.
+            scale = 1.0 + 0.06 * (-offset / 120).clamp(0.0, 1.0);
+          }
+        }
+
+        return Stack(
+          alignment: Alignment.center,
+          clipBehavior: Clip.none,
+          children: [
+            Positioned.fill(
+              child: IgnorePointer(
+                child: CustomPaint(
+                  painter: _CelebrationPainter(progress: celebrate.value),
+                ),
+              ),
+            ),
+            Transform.translate(
+              offset: Offset(0, shift),
+              child: Transform.scale(
+                scale: scale,
+                child: Opacity(opacity: opacity, child: child),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+/// Green shockwave rings and radiating sparks fired once on connect.
+class _CelebrationPainter extends CustomPainter {
+  final double progress;
+
+  _CelebrationPainter({required this.progress});
+
+  static const int _sparkCount = 14;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (progress <= 0 || progress >= 1) return;
+    final c = size.center(Offset.zero);
+    final base = size.shortestSide * 0.36;
+
+    for (int i = 0; i < 3; i++) {
+      final t = ((progress - i * 0.14) / 0.72).clamp(0.0, 1.0);
+      if (t <= 0 || t >= 1) continue;
+      final eased = Curves.easeOutCubic.transform(t);
+      canvas.drawCircle(
+        c,
+        base * (1 + 1.3 * eased),
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 3 * (1 - t) + 0.5
+          ..color = AppColors.connectedStatus.withValues(alpha: 0.6 * (1 - t)),
+      );
+    }
+
+    final sparkT = Curves.easeOutCubic.transform(progress);
+    final sparkPaint = Paint()
+      ..strokeCap = StrokeCap.round
+      ..strokeWidth = 2
+      ..color = AppColors.connectedStatus.withValues(
+        alpha: 0.8 * (1 - progress),
+      );
+    for (int i = 0; i < _sparkCount; i++) {
+      final a = i * 2 * math.pi / _sparkCount + 0.2;
+      final dir = Offset(math.cos(a), math.sin(a));
+      final start = base * (1.0 + 1.1 * sparkT);
+      canvas.drawLine(
+        c + dir * start,
+        c + dir * (start + 12 * (1 - progress) + 2),
+        sparkPaint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(_CelebrationPainter old) => old.progress != progress;
 }

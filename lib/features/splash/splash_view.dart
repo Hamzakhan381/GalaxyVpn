@@ -36,9 +36,11 @@ class SplashView extends StatefulWidget {
 }
 
 class _SplashViewState extends State<SplashView> with TickerProviderStateMixin {
-  static const Duration _introDuration = Duration(milliseconds: 3000);
-  static const Duration _loadTimeout = Duration(seconds: 4);
-  static const Duration _hardTimeout = Duration(milliseconds: 4200);
+  // The intro deliberately runs a little over five seconds so the brand
+  // sequence plays in full; the hard timeout is only a safety net.
+  static const Duration _introDuration = Duration(milliseconds: 5200);
+  static const Duration _loadTimeout = Duration(seconds: 5);
+  static const Duration _hardTimeout = Duration(milliseconds: 6500);
 
   late final AnimationController _intro;
   late final AnimationController _loop;
@@ -52,6 +54,7 @@ class _SplashViewState extends State<SplashView> with TickerProviderStateMixin {
   late final Animation<double> _finPop;
   late final Animation<double> _lockBurst;
   late final Animation<double> _sheen;
+  late final Animation<double> _sheenEcho;
   late final Animation<double> _logoScale;
   late final Animation<double> _title;
   late final Animation<double> _tagline;
@@ -67,6 +70,7 @@ class _SplashViewState extends State<SplashView> with TickerProviderStateMixin {
 
   static const List<_BootStep> _steps = [
     _BootStep('Initializing secure core', Icons.memory_rounded),
+    _BootStep('Generating session keys', Icons.key_rounded),
     _BootStep('Encrypting tunnel  ·  AES-256', Icons.lock_outline_rounded),
     _BootStep('Scanning for fastest relay', Icons.radar_rounded),
     _BootStep('Protection ready', Icons.verified_user_outlined),
@@ -96,7 +100,8 @@ class _SplashViewState extends State<SplashView> with TickerProviderStateMixin {
     _shieldFill = interval(0.30, 0.46, Curves.easeOut);
     _finPop = interval(0.36, 0.58, Curves.elasticOut);
     _lockBurst = interval(0.40, 0.66, Curves.easeOutCubic);
-    _sheen = interval(0.58, 0.80, Curves.easeInOutSine);
+    _sheen = interval(0.50, 0.66, Curves.easeInOutSine);
+    _sheenEcho = interval(0.70, 0.84, Curves.easeInOutSine);
     _logoScale = Tween<double>(
       begin: 0.72,
       end: 1.0,
@@ -216,10 +221,11 @@ class _SplashViewState extends State<SplashView> with TickerProviderStateMixin {
 
   _BootStep get _step {
     final p = _intro.value;
-    if (p < 0.30) return _steps[0];
-    if (p < 0.55) return _steps[1];
-    if (p < 0.86) return _steps[2];
-    return _steps[3];
+    if (p < 0.20) return _steps[0];
+    if (p < 0.38) return _steps[1];
+    if (p < 0.56) return _steps[2];
+    if (p < 0.86) return _steps[3];
+    return _steps[4];
   }
 
   @override
@@ -336,7 +342,9 @@ class _SplashViewState extends State<SplashView> with TickerProviderStateMixin {
                             shieldTrace: _shieldTrace.value,
                             fill: _shieldFill.value,
                             fin: _finPop.value,
-                            sheen: _sheen.value,
+                            sheen: _sheen.value > 0 && _sheen.value < 1
+                                ? _sheen.value
+                                : _sheenEcho.value,
                           ),
                         ),
                       ),

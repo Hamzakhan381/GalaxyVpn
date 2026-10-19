@@ -63,10 +63,7 @@ void main() {
         Provider<ConnectivityRepository>.value(value: connectivity),
         ChangeNotifierProvider<VpnRepository>.value(value: repository),
       ],
-      child: MaterialApp(
-        theme: AppTheme.lightTheme,
-        home: const SplashView(),
-      ),
+      child: MaterialApp(theme: AppTheme.lightTheme, home: const SplashView()),
     );
   }
 
@@ -79,14 +76,15 @@ void main() {
     });
   }
 
-  testWidgets('SplashView animates in brand, tagline and status',
-      (tester) async {
+  testWidgets('SplashView animates in brand, tagline and status', (
+    tester,
+  ) async {
     useTallScreen(tester);
 
     await tester.pumpWidget(buildSplashApp());
     await tester.pump(const Duration(milliseconds: 50));
-    await tester.pump(const Duration(milliseconds: 1800));
-    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pump(const Duration(milliseconds: 3000));
+    await tester.pump(const Duration(milliseconds: 850));
 
     expect(find.text('Shark VPN'), findsOneWidget);
     expect(find.text('SECURE  •  PRIVATE  •  FAST'), findsOneWidget);
@@ -97,8 +95,27 @@ void main() {
     await tester.pump(const Duration(seconds: 1));
   });
 
-  testWidgets('SplashView hands off to WelcomeView for signed-out users',
-      (tester) async {
+  testWidgets('SplashView stays on screen for at least five seconds', (
+    tester,
+  ) async {
+    useTallScreen(tester);
+
+    await tester.pumpWidget(buildSplashApp());
+    for (int i = 0; i < 49; i++) {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+
+    expect(find.byType(SplashView), findsOneWidget);
+    expect(find.text('Create Account'), findsNothing);
+
+    await tester.pump(const Duration(seconds: 7));
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.text('Create Account'), findsOneWidget);
+  });
+
+  testWidgets('SplashView hands off to WelcomeView for signed-out users', (
+    tester,
+  ) async {
     useTallScreen(tester);
 
     await tester.pumpWidget(buildSplashApp());
@@ -110,64 +127,68 @@ void main() {
     expect(find.text('Continue as Guest'), findsOneWidget);
   });
 
-  testWidgets('SplashView renders without overflow on compact screen and high font scale',
-      (tester) async {
-    // Compact screen height (e.g. 520px height) and high text scale
-    tester.view.physicalSize = const Size(1080, 1560);
-    tester.view.devicePixelRatio = 3.0;
-    tester.platformDispatcher.textScaleFactorTestValue = 1.4;
-    addTearDown(() {
-      tester.view.resetPhysicalSize();
-      tester.view.resetDevicePixelRatio();
-      tester.platformDispatcher.clearTextScaleFactorTestValue();
-    });
+  testWidgets(
+    'SplashView renders without overflow on compact screen and high font scale',
+    (tester) async {
+      // Compact screen height (e.g. 520px height) and high text scale
+      tester.view.physicalSize = const Size(1080, 1560);
+      tester.view.devicePixelRatio = 3.0;
+      tester.platformDispatcher.textScaleFactorTestValue = 1.4;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+        tester.platformDispatcher.clearTextScaleFactorTestValue();
+      });
 
-    await tester.pumpWidget(buildSplashApp());
-    await tester.pump(const Duration(milliseconds: 50));
-    await tester.pump(const Duration(milliseconds: 1200));
+      await tester.pumpWidget(buildSplashApp());
+      await tester.pump(const Duration(milliseconds: 50));
+      await tester.pump(const Duration(milliseconds: 1200));
 
-    expect(find.text('Shark VPN'), findsOneWidget);
-    expect(tester.takeException(), isNull);
+      expect(find.text('Shark VPN'), findsOneWidget);
+      expect(tester.takeException(), isNull);
 
-    await tester.pump(const Duration(seconds: 7));
-    await tester.pump(const Duration(seconds: 1));
-    expect(tester.takeException(), isNull);
-  });
+      await tester.pump(const Duration(seconds: 7));
+      await tester.pump(const Duration(seconds: 1));
+      expect(tester.takeException(), isNull);
+    },
+  );
 
-  testWidgets('SplashView hands off to VpnDisclosureView when authenticated without consent',
-      (tester) async {
-    useTallScreen(tester);
-    await prefs.saveAuth(
-      email: 'test@example.com',
-      name: 'Test User',
-      isGuest: false,
-    );
-    await prefs.setVpnConsent(false);
+  testWidgets(
+    'SplashView hands off to VpnDisclosureView when authenticated without consent',
+    (tester) async {
+      useTallScreen(tester);
+      await prefs.saveAuth(
+        email: 'test@example.com',
+        name: 'Test User',
+        isGuest: false,
+      );
+      await prefs.setVpnConsent(false);
 
-    await tester.pumpWidget(buildSplashApp());
-    await tester.pump(const Duration(seconds: 7));
-    await tester.pump(const Duration(seconds: 1));
+      await tester.pumpWidget(buildSplashApp());
+      await tester.pump(const Duration(seconds: 7));
+      await tester.pump(const Duration(seconds: 1));
 
-    expect(find.textContaining('VpnService'), findsWidgets);
-  });
+      expect(find.textContaining('VpnService'), findsWidgets);
+    },
+  );
 
-  testWidgets('SplashView hands off to MainNavigationShell when authenticated with consent',
-      (tester) async {
-    useTallScreen(tester);
-    await prefs.saveAuth(
-      email: 'test@example.com',
-      name: 'Test User',
-      isGuest: false,
-    );
-    await prefs.setVpnConsent(true);
+  testWidgets(
+    'SplashView hands off to MainNavigationShell when authenticated with consent',
+    (tester) async {
+      useTallScreen(tester);
+      await prefs.saveAuth(
+        email: 'test@example.com',
+        name: 'Test User',
+        isGuest: false,
+      );
+      await prefs.setVpnConsent(true);
 
-    await tester.pumpWidget(buildSplashApp());
-    await tester.pump(const Duration(seconds: 7));
-    await tester.pump(const Duration(seconds: 1));
+      await tester.pumpWidget(buildSplashApp());
+      await tester.pump(const Duration(seconds: 7));
+      await tester.pump(const Duration(seconds: 1));
 
-    // Home screen has the main connection orb / status
-    expect(find.text('UNPROTECTED'), findsOneWidget);
-  });
+      // Home screen has the main connection orb / status
+      expect(find.text('UNPROTECTED'), findsOneWidget);
+    },
+  );
 }
-
-

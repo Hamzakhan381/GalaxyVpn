@@ -134,3 +134,133 @@ class SharkPageTransitionsBuilder extends PageTransitionsBuilder {
     );
   }
 }
+
+/// Odometer-style text: only the characters that change roll vertically,
+/// so ticking timers and counters feel alive without the whole value jumping.
+class OdometerText extends StatelessWidget {
+  final String value;
+  final TextStyle style;
+  final Duration duration;
+
+  const OdometerText(
+    this.value, {
+    super.key,
+    required this.style,
+    this.duration = const Duration(milliseconds: 360),
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final tabular = style.copyWith(
+      fontFeatures: const [FontFeature.tabularFigures()],
+    );
+    final chars = value.characters.toList();
+
+    return Semantics(
+      label: value,
+      excludeSemantics: true,
+      child: ClipRect(
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (int i = 0; i < chars.length; i++)
+              AnimatedSwitcher(
+                duration: Motion.isReduced(context) ? Duration.zero : duration,
+                switchInCurve: Curves.easeOutCubic,
+                switchOutCurve: Curves.easeInCubic,
+                layoutBuilder: (current, previous) => Stack(
+                  alignment: Alignment.center,
+                  children: [...previous, ?current],
+                ),
+                transitionBuilder: (child, anim) {
+                  final incoming = child.key == ValueKey('$i:${chars[i]}');
+                  return SlideTransition(
+                    position: Tween<Offset>(
+                      begin: Offset(0, incoming ? 0.9 : -0.9),
+                      end: Offset.zero,
+                    ).animate(anim),
+                    child: FadeTransition(opacity: anim, child: child),
+                  );
+                },
+                child: Text(
+                  chars[i],
+                  key: ValueKey('$i:${chars[i]}'),
+                  style: tabular,
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Small status dot that breathes with a soft halo.
+class PulsingDot extends StatefulWidget {
+  final Color color;
+  final double size;
+
+  const PulsingDot({super.key, required this.color, this.size = 6});
+
+  @override
+  State<PulsingDot> createState() => _PulsingDotState();
+}
+
+class _PulsingDotState extends State<PulsingDot>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1400),
+  );
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (Motion.isTestEnvironment || Motion.isReduced(context)) {
+      _ctrl.stop();
+    } else if (!_ctrl.isAnimating) {
+      _ctrl.repeat();
+    }
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final s = widget.size;
+    return SizedBox.square(
+      dimension: s * 2.6,
+      child: AnimatedBuilder(
+        animation: _ctrl,
+        builder: (context, _) {
+          final t = _ctrl.value;
+          return Stack(
+            alignment: Alignment.center,
+            children: [
+              Container(
+                width: s * (1 + 1.6 * t),
+                height: s * (1 + 1.6 * t),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: widget.color.withValues(alpha: 0.45 * (1 - t)),
+                ),
+              ),
+              Container(
+                width: s,
+                height: s,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: widget.color,
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
