@@ -9,6 +9,7 @@ import '../../domain/repositories/preferences_repository.dart';
 import '../../domain/repositories/server_repository.dart';
 import '../datasources/local/bundled_seed_relays_data_source.dart';
 import '../datasources/remote/server_remote_data_source.dart';
+import '../datasources/remote/vpnbook_data_source.dart';
 
 /// Concrete implementation of ServerRepository
 class ServerRepositoryImpl implements ServerRepository {
@@ -21,8 +22,9 @@ class ServerRepositoryImpl implements ServerRepository {
     required this.preferencesRepo,
   }) : remoteDataSource = remoteDataSource ?? ServerRemoteDataSource();
 
-  /// How many relays from a live catalog are persisted for offline use.
-  static const int _persistedCatalogSize = 40;
+  /// How many relays of each country are persisted for offline use (the
+  /// best one plus failover alternates).
+  static const int _persistedPerCountry = 4;
 
   @override
   Future<List<VpnServer>> getServers({bool forceRefresh = false}) async {
@@ -36,8 +38,16 @@ class ServerRepositoryImpl implements ServerRepository {
         customApiKey: preferencesRepo.customApiKey,
       );
       if (fetched.isNotEmpty) {
-        _cachedServers = fetched;
-        unawaited(_persistCatalog(fetched));
+        // VPNBook's page can be unreachable while VPN Gate answers; keep its
+        // servers (and last published login) from the previous catalog.
+        final merged = fetched.any(VpnBookDataSource.isVpnBook)
+            ? fetched
+            : [
+                ...fetched,
+                ..._loadPersistedCatalog().where(VpnBookDataSource.isVpnBook),
+              ];
+        _cachedServers = merged;
+        unawaited(_persistCatalog(merged));
         return _applyFavorites(_cachedServers);
       }
     } catch (e) {
@@ -64,12 +74,16 @@ class ServerRepositoryImpl implements ServerRepository {
 
   Future<void> _persistCatalog(List<VpnServer> servers) async {
     try {
-      final best = List<VpnServer>.from(servers)
-        ..sort((a, b) => b.score.compareTo(a.score));
-      final payload = best
-          .take(_persistedCatalogSize)
-          .map((s) => s.toJson())
-          .toList(growable: false);
+      final byCountry = <String, List<VpnServer>>{};
+      for (final server in servers) {
+        byCountry.putIfAbsent(server.countryCode, () => []).add(server);
+      }
+      final payload = [
+        for (final group in byCountry.values)
+          ...(group..sort(_compareFastest))
+              .take(_persistedPerCountry)
+              .map((s) => s.toJson()),
+      ];
       await preferencesRepo.setCachedRelayCatalog(jsonEncode(payload));
     } catch (e) {
       debugPrint('ServerRepositoryImpl: could not cache catalog: $e');
@@ -323,36 +337,57 @@ class ServerRepositoryImpl implements ServerRepository {
     final candidates = servers.where((s) => s.isAvailable).toList();
     if (candidates.isEmpty) return servers.first;
 
-    candidates.sort((a, b) {
-      final pingA = a.pingMs;
-      final pingB = b.pingMs;
+    candidates.sort(_compareFastest);
+    return candidates.first;
+  }
 
-      if (pingA != null && pingB != null) {
-        final pingDiff = (pingA - pingB).abs();
-        if (pingDiff > 8) {
-          return pingA.compareTo(pingB);
-        }
-        final speedA = a.speedBps ?? 0;
-        final speedB = b.speedBps ?? 0;
-        if (speedA != speedB) {
-          return speedB.compareTo(speedA);
-        }
+  @override
+  List<VpnServer> bestPerCountry(List<VpnServer> servers) {
+    final best = <String, VpnServer>{};
+    for (final server in servers) {
+      final key = server.countryCode.toUpperCase();
+      final current = best[key];
+      if (current == null || _compareFastest(server, current) < 0) {
+        best[key] = server;
+      }
+    }
+    return best.values.toList();
+  }
+
+  /// Orders relays fastest first, for the user's own network: reachable before
+  /// unreachable, and relays this device verified (latency measured from here)
+  /// before ones known only from the catalog, whose ping is measured from the
+  /// catalog's own location (Japan for VPN Gate).
+  static int _compareFastest(VpnServer a, VpnServer b) {
+    if (a.isAvailable != b.isAvailable) return a.isAvailable ? -1 : 1;
+    if (a.isVerified != b.isVerified) return a.isVerified ? -1 : 1;
+
+    final pingA = a.pingMs;
+    final pingB = b.pingMs;
+
+    if (pingA != null && pingB != null) {
+      final pingDiff = (pingA - pingB).abs();
+      if (pingDiff > 8) {
         return pingA.compareTo(pingB);
       }
-
-      if (pingA != null && pingB == null) return -1;
-      if (pingA == null && pingB != null) return 1;
-
       final speedA = a.speedBps ?? 0;
       final speedB = b.speedBps ?? 0;
       if (speedA != speedB) {
         return speedB.compareTo(speedA);
       }
+      return pingA.compareTo(pingB);
+    }
 
-      return b.score.compareTo(a.score);
-    });
+    if (pingA != null && pingB == null) return -1;
+    if (pingA == null && pingB != null) return 1;
 
-    return candidates.first;
+    final speedA = a.speedBps ?? 0;
+    final speedB = b.speedBps ?? 0;
+    if (speedA != speedB) {
+      return speedB.compareTo(speedA);
+    }
+
+    return b.score.compareTo(a.score);
   }
 
   @override

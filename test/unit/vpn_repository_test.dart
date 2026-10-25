@@ -190,13 +190,18 @@ void main() {
         );
       });
 
-      test('does not overwrite manual selection on subsequent loads', () async {
+      test('keeps a manually chosen country on subsequent loads', () async {
         await repo.loadServers();
-        final second = repo.allServers[1];
-        repo.selectServer(second);
+        final chosen = repo.countryServers.firstWhere(
+          (s) => s.id != repo.fastestServer?.id,
+          orElse: () => repo.countryServers.first,
+        );
+        repo.selectServer(chosen);
         await repo.loadServers();
-        // selectedServer should remain the manually chosen one
-        expect(repo.selectedServer, equals(second));
+        // The selection stays in the chosen country, on that country's best
+        // relay, rather than jumping to the overall fastest.
+        expect(repo.selectedServer?.countryCode, equals(chosen.countryCode));
+        expect(repo.countryServers, contains(repo.selectedServer));
       });
 
       test('returns cached servers on second call without forceRefresh',

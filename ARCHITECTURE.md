@@ -111,7 +111,7 @@ lib/
 │   │   ├── session_repository.dart             # History logging contract
 │   │   └── vpn_repository.dart                 # VPN tunnel operation contract
 │   └── usecases/
-│       ├── servers/                            # GetServers, DetectFastest, ToggleFavorite, Probe
+│       ├── servers/                            # GetServers, DetectFastest, PickBestPerCountry, ToggleFavorite, Probe
 │       ├── sessions/                           # GetHistory, SaveSession, ClearHistory
 │       └── vpn/                                # Connect, Disconnect, StateStream, MetricsStream
 │
@@ -121,7 +121,9 @@ lib/
 │   │   │   ├── bundled_seed_relays_data_source.dart # Snapshot of official VPN Gate relays
 │   │   │   └── preferences_local_data_source.dart   # SharedPreferences persistence
 │   │   ├── remote/
-│   │   │   └── server_remote_data_source.dart       # VPN Gate HTTPS registry and probes
+│   │   │   ├── server_remote_data_source.dart       # VPN Gate + VPNBook catalogs and probes
+│   │   │   ├── vpnbook_data_source.dart             # VPNBook servers and published login
+│   │   │   └── relay_probe.dart                     # On-device SSTP / OpenVPN handshake probes
 │   │   └── platform/
 │   │       ├── vpn_platform_data_source.dart        # Platform engine abstraction
 │   │       ├── native_vpn_platform_data_source.dart # SSTP tunnel (GalaxyVpnService)

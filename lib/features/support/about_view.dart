@@ -73,7 +73,7 @@ class AboutView extends StatelessWidget {
                 delayMs: 180,
                 child: _buildCard(
                   title: 'SSTP, OpenVPN & Network Core',
-                  content: 'Tunnels run over SSTP, which travels inside a standard TLS connection so it works even on networks that block OpenVPN, with OpenVPN as a fallback. Both feed Android\'s VpnService TUN interface and connect to VPN Gate\'s university and community public relays.',
+                  content: 'Tunnels run over SSTP, which travels inside a standard TLS connection so it works even on networks that block OpenVPN, with OpenVPN as a fallback. Both feed Android\'s VpnService TUN interface. Relays come from VPN Gate\'s university and community network and from VPNBook\'s free servers in Europe and North America; the app checks each from your network and lists the fastest working server in every country.',
                 ),
               ),
               const SizedBox(height: 16),

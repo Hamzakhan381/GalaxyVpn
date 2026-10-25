@@ -19,6 +19,11 @@ class VpnServer {
   final String password;
   final bool isFavorite;
   final bool isAvailable;
+
+  /// True once this device completed the relay's real handshake (SSTP or
+  /// OpenVPN), so [pingMs] is a latency measured from here rather than the
+  /// figure published in the catalog.
+  final bool isVerified;
   final DateTime lastChecked;
 
   const VpnServer({
@@ -39,6 +44,7 @@ class VpnServer {
     this.password = 'vpn',
     this.isFavorite = false,
     this.isAvailable = true,
+    this.isVerified = false,
     required this.lastChecked,
   });
 
@@ -60,6 +66,7 @@ class VpnServer {
     String? password,
     bool? isFavorite,
     bool? isAvailable,
+    bool? isVerified,
     DateTime? lastChecked,
   }) {
     return VpnServer(
@@ -80,6 +87,7 @@ class VpnServer {
       password: password ?? this.password,
       isFavorite: isFavorite ?? this.isFavorite,
       isAvailable: isAvailable ?? this.isAvailable,
+      isVerified: isVerified ?? this.isVerified,
       lastChecked: lastChecked ?? this.lastChecked,
     );
   }
@@ -103,6 +111,7 @@ class VpnServer {
       'password': password,
       'isFavorite': isFavorite,
       'isAvailable': isAvailable,
+      'isVerified': isVerified,
       'lastChecked': lastChecked.toIso8601String(),
     };
   }
@@ -126,6 +135,7 @@ class VpnServer {
       password: json['password'] as String? ?? 'vpn',
       isFavorite: json['isFavorite'] as bool? ?? false,
       isAvailable: json['isAvailable'] as bool? ?? true,
+      isVerified: json['isVerified'] as bool? ?? false,
       lastChecked: json['lastChecked'] != null
           ? DateTime.parse(json['lastChecked'] as String)
           : DateTime.now(),

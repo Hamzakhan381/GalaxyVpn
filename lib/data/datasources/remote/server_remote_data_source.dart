@@ -1,18 +1,23 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import '../../../../core/constants/app_constants.dart';
 import '../../../domain/entities/vpn_server.dart';
+import 'relay_probe.dart';
+import 'vpnbook_data_source.dart';
 
 /// Remote data source for fetching public VPN relays, parsing CSV, and measuring network latency
 class ServerRemoteDataSource {
   final http.Client _httpClient;
+  final VpnBookDataSource _vpnBook;
 
-  ServerRemoteDataSource([http.Client? client])
-    : _httpClient = client ?? http.Client();
+  ServerRemoteDataSource([http.Client? client, VpnBookDataSource? vpnBook])
+    : _httpClient = client ?? http.Client(),
+      _vpnBook = vpnBook ?? VpnBookDataSource(client: client);
 
   /// Multi-source relay fetcher with resilient mirror failover & custom API support
   Future<List<VpnServer>> fetchRelays({
@@ -49,10 +54,12 @@ class ServerRemoteDataSource {
 
     // VPN Gate exposes the live catalog on two official HTTPS hosts. Merge
     // both responses so a partial list from one host does not hide countries
-    // published by the other. Each endpoint can fail independently.
+    // published by the other. VPNBook adds Europe and North America. Each
+    // source can fail independently.
     final catalogs = await Future.wait([
       _fetchVpnGateCatalog(AppConstants.vpnGateApiUrl),
       _fetchVpnGateCatalog(AppConstants.vpnGateApiMirrorUrl),
+      _vpnBook.fetchServers(),
     ]);
     final serversById = <String, VpnServer>{};
     for (final catalog in catalogs) {
@@ -79,6 +86,9 @@ class ServerRemoteDataSource {
       return [];
     }
   }
+
+  /// VPN Gate sorts by score, so rare countries sit near the end of the list.
+  static const int _maxCatalogRows = 300;
 
   List<VpnServer> parseVpnGateJson(String jsonData) {
     final List<VpnServer> list = [];
@@ -150,7 +160,7 @@ class ServerRemoteDataSource {
             lastChecked: DateTime.now(),
           ),
         );
-        if (list.length >= 120) break;
+        if (list.length >= _maxCatalogRows) break;
       }
     } catch (_) {}
     return list;
@@ -238,7 +248,7 @@ class ServerRemoteDataSource {
           ),
         );
 
-        if (list.length >= 120) {
+        if (list.length >= _maxCatalogRows) {
           break;
         }
       } catch (_) {
@@ -273,47 +283,90 @@ class ServerRemoteDataSource {
   }) async {
     if (servers.isEmpty) return [];
 
-    final List<VpnServer> updatedList = [];
-    for (int i = 0; i < servers.length; i += maxConcurrent) {
-      final end = (i + maxConcurrent < servers.length)
-          ? i + maxConcurrent
-          : servers.length;
-      final batch = servers.sublist(i, end);
-
-      final batchResults = await Future.wait(
-        batch.map((server) async {
-          // A TCP socket probe cannot determine whether a UDP OpenVPN endpoint
-          // is reachable. Keep VPN Gate's reported latency instead of marking
-          // every UDP relay offline based on an unrelated TCP port.
-          if (!server.protocol.toLowerCase().startsWith('tcp')) {
-            return server.copyWith(
-              isAvailable: true,
-              lastChecked: DateTime.now(),
-            );
-          }
-          final measured = await measureLatency(
-            server.host,
-            server.port,
-            timeout: timeout,
-          );
-          if (measured != null && measured > 0) {
-            return server.copyWith(
-              pingMs: measured,
-              isAvailable: true,
-              lastChecked: DateTime.now(),
-            );
-          }
-          return server.copyWith(
-            isAvailable: false,
-            lastChecked: DateTime.now(),
-          );
-        }),
-      );
-
-      updatedList.addAll(batchResults);
+    // A worker pool rather than fixed batches: one relay that times out on
+    // every endpoint must not hold up the probes queued behind it.
+    final results = List<VpnServer?>.filled(servers.length, null);
+    var next = 0;
+    Future<void> worker() async {
+      while (next < servers.length) {
+        final index = next++;
+        results[index] = await probeServer(servers[index], timeout: timeout);
+      }
     }
 
-    return updatedList;
+    await Future.wait([
+      for (var w = 0; w < min(maxConcurrent, servers.length); w++) worker(),
+    ]);
+    return results.cast<VpnServer>();
+  }
+
+  /// Checks [server] the way the app will connect to it: SSTP first when the
+  /// relay supports it, then each OpenVPN endpoint in order. The endpoint that
+  /// answered is moved to the front of the profile, and the relay is marked
+  /// verified with the measured latency; otherwise it is marked unavailable.
+  Future<VpnServer> probeServer(
+    VpnServer server, {
+    Duration timeout = const Duration(milliseconds: 1500),
+  }) async {
+    final checked = DateTime.now();
+    VpnServer verified(int ms) => server.copyWith(
+      pingMs: ms,
+      isAvailable: true,
+      isVerified: true,
+      lastChecked: checked,
+    );
+
+    if (server.supportsSstp) {
+      final ms = await RelayProbe.sstp(
+        address: server.host,
+        port: server.sstpPort,
+        hostname: server.sstpHostname!,
+        timeout: timeout,
+      );
+      if (ms != null) return verified(ms);
+    }
+
+    final config = server.ovpnConfig;
+    final remotes = OpenVpnRemote.parseAll(config);
+    if (remotes.isNotEmpty && !RelayProbe.needsTlsAuthKey(config)) {
+      for (final remote in remotes) {
+        final ms = await RelayProbe.openVpn(remote, timeout: timeout);
+        if (ms == null) continue;
+        return verified(ms).copyWith(
+          protocol: remote.udp ? 'UDP' : 'TCP',
+          port: remote.port,
+          ovpnConfig: OpenVpnRemote.preferFirst(config, remote),
+        );
+      }
+      return server.copyWith(
+        isAvailable: false,
+        isVerified: false,
+        lastChecked: checked,
+      );
+    }
+
+    // Profiles this probe cannot handshake with (tls-auth keys, custom
+    // catalogs): fall back to plain TCP reachability, and leave UDP endpoints
+    // as published since a TCP socket says nothing about them.
+    if (!server.protocol.toLowerCase().startsWith('tcp')) {
+      return server.copyWith(isAvailable: true, lastChecked: checked);
+    }
+    final measured = await measureLatency(
+      server.host,
+      server.port,
+      timeout: timeout,
+    );
+    return measured != null && measured > 0
+        ? server.copyWith(
+            pingMs: measured,
+            isAvailable: true,
+            lastChecked: checked,
+          )
+        : server.copyWith(
+            isAvailable: false,
+            isVerified: false,
+            lastChecked: checked,
+          );
   }
 
   void dispose() {

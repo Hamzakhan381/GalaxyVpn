@@ -6,7 +6,9 @@ import '../remote/server_remote_data_source.dart';
 
 /// Offline fallback relays: a bundled snapshot of VPN Gate's official,
 /// long-running `public-vpn-*` relays (operated by the VPN Gate project at
-/// the University of Tsukuba).
+/// the University of Tsukuba), plus volunteer relays in Japan, Korea and the
+/// US that had run for days and passed an SSTP handshake from Pakistan when
+/// the snapshot was taken.
 ///
 /// The profiles are genuine VPN Gate OpenVPN configs taken from the public
 /// catalog, so they can actually connect. They are only used when neither the

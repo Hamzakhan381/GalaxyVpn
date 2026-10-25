@@ -17,6 +17,7 @@ import '../../domain/repositories/server_repository.dart';
 import '../../domain/repositories/vpn_repository.dart';
 import '../../domain/usecases/servers/detect_fastest_server_usecase.dart';
 import '../../domain/usecases/servers/get_servers_usecase.dart';
+import '../../domain/usecases/servers/pick_best_per_country_usecase.dart';
 import '../../domain/usecases/servers/probe_server_latencies_usecase.dart';
 import '../../domain/usecases/servers/toggle_favorite_server_usecase.dart';
 import '../../domain/usecases/sessions/clear_session_history_usecase.dart';
@@ -42,6 +43,7 @@ class VpnController extends ChangeNotifier {
   late final GetServersUseCase _getServersUseCase;
   late final ToggleFavoriteServerUseCase _toggleFavoriteUseCase;
   late final DetectFastestServerUseCase _detectFastestUseCase;
+  late final PickBestPerCountryUseCase _pickBestPerCountryUseCase;
   late final ProbeServerLatenciesUseCase _probeServerLatenciesUseCase;
   late final GetSessionHistoryUseCase _getSessionHistoryUseCase;
   late final SaveSessionHistoryUseCase _saveSessionHistoryUseCase;
@@ -61,6 +63,10 @@ class VpnController extends ChangeNotifier {
   bool _isDetectingFastest = false;
   DateTime? _lastFastestDetectionTime;
   List<VpnServer> _allServers = [];
+
+  /// The fastest relay of each country: what the user picks from. The other
+  /// relays in [_allServers] stay as same-country failover alternates.
+  List<VpnServer> _countryServers = [];
   List<VpnSession> _sessions = [];
   bool _isLoadingServers = false;
   String? _serverLoadError;
@@ -92,6 +98,7 @@ class VpnController extends ChangeNotifier {
     _getServersUseCase = GetServersUseCase(serverService);
     _toggleFavoriteUseCase = ToggleFavoriteServerUseCase(serverService);
     _detectFastestUseCase = DetectFastestServerUseCase(serverService);
+    _pickBestPerCountryUseCase = PickBestPerCountryUseCase(serverService);
     _probeServerLatenciesUseCase = ProbeServerLatenciesUseCase(serverService);
     final sessionRepo = SessionRepositoryImpl(prefs);
     _getSessionHistoryUseCase = GetSessionHistoryUseCase(sessionRepo);
@@ -106,6 +113,7 @@ class VpnController extends ChangeNotifier {
   bool get isDetectingFastest => _isDetectingFastest;
   DateTime? get lastFastestDetectionTime => _lastFastestDetectionTime;
   List<VpnServer> get allServers => _allServers;
+  List<VpnServer> get countryServers => _countryServers;
   List<VpnSession> get sessions => List.unmodifiable(_sessions);
   bool get isLoadingServers => _isLoadingServers;
   String? get serverLoadError => _serverLoadError;
@@ -146,15 +154,23 @@ class VpnController extends ChangeNotifier {
       _failoverActive = false;
       return;
     }
-    final candidates = _allServers
+    final remaining = _allServers
         .where((s) => s.isAvailable && !_failoverTried.contains(s.id))
-        .toList()
-      ..sort((a, b) => b.score.compareTo(a.score));
-    if (candidates.isEmpty) {
+        .toList();
+    // Stay in the country the user chose; only an automatic choice may move
+    // on to the next fastest country.
+    final country = _selectedServer?.countryCode;
+    final sameCountry = remaining
+        .where((s) => s.countryCode == country)
+        .toList();
+    final pool = sameCountry.isNotEmpty || _hasUserSelectedServer
+        ? sameCountry
+        : _pickBestPerCountryUseCase(remaining);
+    if (pool.isEmpty) {
       _failoverActive = false;
       return;
     }
-    final next = candidates.first;
+    final next = _detectFastestUseCase(pool)!;
     _failoverTried.add(next.id);
     _selectedServer = next;
     // Give the engine time to finish tearing down the failed tunnel.
@@ -225,7 +241,8 @@ class VpnController extends ChangeNotifier {
     try {
       _allServers = await _getServersUseCase(forceRefresh: forceRefresh);
       if (_allServers.isNotEmpty) {
-        _fastestServer = _detectFastestUseCase(_allServers);
+        _countryServers = _pickCountries();
+        _fastestServer = _detectFastestUseCase(_countryServers);
         if (_selectedServer != null) {
           _selectedServer = _allServers.firstWhere(
             (server) => server.id == _selectedServer!.id,
@@ -252,6 +269,7 @@ class VpnController extends ChangeNotifier {
         if (prefs.autoFastestServer && !_hasUserSelectedServer) {
           _selectedServer = _fastestServer;
         }
+        _followCountryBest();
         if (!_isTestEnvironment) {
           unawaited(detectFastestServer());
         }
@@ -279,20 +297,10 @@ class VpnController extends ChangeNotifier {
     try {
       _fastestServer ??= _detectFastestUseCase(_allServers);
 
-      final candidateList = List<VpnServer>.from(_allServers);
-      candidateList.sort((a, b) {
-        final speedA = a.speedBps ?? 0;
-        final speedB = b.speedBps ?? 0;
-        if (speedA != speedB) return speedB.compareTo(speedA);
-        return b.score.compareTo(a.score);
-      });
-
-      final toProbe = candidateList.take(15).toList();
-
       final probedResults = await _probeServerLatenciesUseCase(
-        toProbe,
-        maxConcurrent: 5,
-        timeout: const Duration(milliseconds: 1200),
+        _probeCandidates(),
+        maxConcurrent: 8,
+        timeout: const Duration(milliseconds: 2500),
       );
 
       if (probedResults.isNotEmpty) {
@@ -300,13 +308,15 @@ class VpnController extends ChangeNotifier {
         _allServers = _allServers.map((s) => probedMap[s.id] ?? s).toList();
       }
 
-      final detected = _detectFastestUseCase(_allServers);
+      _countryServers = _pickCountries();
+      final detected = _detectFastestUseCase(_countryServers);
       if (detected != null) {
         _fastestServer = detected;
         if (prefs.autoFastestServer && !_hasUserSelectedServer) {
           _selectedServer = detected;
         }
       }
+      _followCountryBest();
       _lastFastestDetectionTime = DateTime.now();
     } catch (e) {
       debugPrint('detectFastestServer error: $e');
@@ -317,6 +327,53 @@ class VpnController extends ChangeNotifier {
     }
 
     return _fastestServer;
+  }
+
+  /// Relays to probe: each country's strongest few by catalog speed. Probing
+  /// every relay takes too long (Japan alone lists 50+), while probing only the
+  /// global top would leave smaller countries unverified.
+  static const int _probesPerCountry = 6;
+
+  List<VpnServer> _probeCandidates() {
+    final byCountry = <String, List<VpnServer>>{};
+    for (final server in _allServers) {
+      byCountry.putIfAbsent(server.countryCode, () => []).add(server);
+    }
+    return [
+      for (final group in byCountry.values)
+        ...(group..sort((a, b) {
+              final speedA = a.speedBps ?? 0;
+              final speedB = b.speedBps ?? 0;
+              if (speedA != speedB) return speedB.compareTo(speedA);
+              return b.score.compareTo(a.score);
+            }))
+            .take(_probesPerCountry),
+    ];
+  }
+
+  /// One relay per country, leaving out countries where every relay failed its
+  /// probe. If nothing is reachable at all (offline), all countries stay
+  /// listed so the user can still try.
+  List<VpnServer> _pickCountries() {
+    final best = _pickBestPerCountryUseCase(_allServers);
+    final reachable = best.where((s) => s.isAvailable).toList();
+    return reachable.isEmpty ? best : reachable;
+  }
+
+  /// Moves an idle selection to its country's current best relay, so a probe
+  /// that finds a faster relay in the same country is used on next connect.
+  void _followCountryBest() {
+    final selected = _selectedServer;
+    final idle =
+        connectionState == VpnConnectionState.disconnected ||
+        connectionState == VpnConnectionState.error;
+    if (selected == null || !idle) return;
+    for (final best in _countryServers) {
+      if (best.countryCode == selected.countryCode) {
+        _selectedServer = best;
+        return;
+      }
+    }
   }
 
   void selectServer(VpnServer server) {
@@ -370,6 +427,7 @@ class VpnController extends ChangeNotifier {
   Future<void> toggleFavorite(String serverId) async {
     await _toggleFavoriteUseCase(serverId);
     _allServers = await _getServersUseCase();
+    _countryServers = _pickCountries();
     if (_selectedServer != null && _selectedServer!.id == serverId) {
       _selectedServer = _allServers.firstWhere(
         (s) => s.id == serverId,

@@ -14,7 +14,11 @@ This application incorporates open-source libraries and components. Below is the
 
 ### 1a. VPN Gate relay catalog
 - **Source:** [https://www.vpngate.net](https://www.vpngate.net) (University of Tsukuba)
-- **Role:** Public relay list and OpenVPN profiles. `assets/servers/vpngate_snapshot.csv` is a snapshot of VPN Gate's official `public-vpn-*` relays used as an offline fallback.
+- **Role:** Public relay list and OpenVPN profiles. `assets/servers/vpngate_snapshot.csv` is a snapshot of VPN Gate's official `public-vpn-*` relays, plus a few long-running volunteer relays, used as an offline fallback.
+
+### 1b. VPNBook free VPN
+- **Source:** [https://www.vpnbook.com/freevpn](https://www.vpnbook.com/freevpn)
+- **Role:** Free OpenVPN servers in Germany, France, the UK, the US, Canada and Poland. The app reads the shared login VPNBook publishes on that page (it changes every one to two weeks); `assets/servers/vpnbook_template.ovpn` holds the certificates every VPNBook server shares. VPNBook publishes no terms for third-party clients, so check with VPNBook before distributing the app publicly.
 
 The SSTP tunnel (`SstpTunnel.kt`) is original code implementing [MS-SSTP] and PPP (RFC 1661/1332/1334).
 

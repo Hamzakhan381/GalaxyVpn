@@ -45,7 +45,7 @@ class _ServersViewState extends State<ServersView> {
   Widget build(BuildContext context) {
     return Consumer<VpnController>(
       builder: (context, vpnRepo, _) {
-        if (vpnRepo.isLoadingServers && vpnRepo.allServers.isEmpty) {
+        if (vpnRepo.isLoadingServers && vpnRepo.countryServers.isEmpty) {
           return const Scaffold(
             backgroundColor: AppColors.primaryBackground,
             body: CyberBackground(
@@ -56,7 +56,7 @@ class _ServersViewState extends State<ServersView> {
           );
         }
 
-        if (vpnRepo.serverLoadError != null && vpnRepo.allServers.isEmpty) {
+        if (vpnRepo.serverLoadError != null && vpnRepo.countryServers.isEmpty) {
           return Scaffold(
             backgroundColor: AppColors.primaryBackground,
             appBar: AppBar(
@@ -80,12 +80,12 @@ class _ServersViewState extends State<ServersView> {
         // Get unique countries for filter
         final countries = [
           'All Countries',
-          ...vpnRepo.allServers.map((s) => s.country).toSet().toList()..sort(),
+          ...vpnRepo.countryServers.map((s) => s.country).toSet().toList()..sort(),
         ];
 
         // Filter & Sort
         var filtered = vpnRepo.serverService.filterAndSort(
-          servers: vpnRepo.allServers,
+          servers: vpnRepo.countryServers,
           query: _searchController.text,
           countryFilter: _selectedCountry,
           protocolFilter: _selectedProtocol,
@@ -329,7 +329,7 @@ class _ServersViewState extends State<ServersView> {
                               duration: Motion.slow,
                               curve: Curves.easeOutCubic,
                               builder: (context, count, _) => Text(
-                                '$count RELAYS AVAILABLE',
+                                '$count ${count == 1 ? 'COUNTRY' : 'COUNTRIES'} AVAILABLE',
                                 style: AppTextStyles.labelSm.copyWith(
                                   color: AppColors.secondaryText,
                                   letterSpacing: 1.0,

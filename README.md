@@ -73,7 +73,7 @@ For diagrams and flowcharts, see [`ARCHITECTURE.md`](ARCHITECTURE.md).
 6. **Session History & Analytics:** Local storage of session duration, throughput data (bytes in/out), exit node identity, and one-tap history purging.
 7. **Connection and Privacy Controls:** Auto-connect, recovery after internet returns, relay selection, reduced motion, diagnostics, Terms, and Privacy Policy.
 
-The Android app uses the OpenVPN profiles published by VPN Gate. Its bundled profiles are offline fallbacks with unknown current availability; live relay metadata is preferred. The experimental native TUN demonstration was removed because it did not carry user traffic. WireGuard is not selectable because this relay source does not provide WireGuard peer configurations.
+The Android app uses relays from two free sources: VPN Gate (university and volunteer relays, reached over SSTP first) and VPNBook (OpenVPN servers in Europe and North America, tried on UDP 53 before TCP 443, since some networks such as Pakistan's reset OpenVPN over TCP). On each device the app probes every country's strongest relays with their real handshake, then lists one server per country: the fastest one that answered. The other relays stay as same-country failover. Its bundled profiles are offline fallbacks with unknown current availability; live relay metadata is preferred. The experimental native TUN demonstration was removed because it did not carry user traffic. WireGuard is not selectable because this relay source does not provide WireGuard peer configurations.
 
 ---
 

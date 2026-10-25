@@ -16,6 +16,9 @@ abstract class ServerRepository {
 
   VpnServer? findFastestServer(List<VpnServer> servers);
 
+  /// The fastest relay of each country, as ranked by [findFastestServer].
+  List<VpnServer> bestPerCountry(List<VpnServer> servers);
+
   Future<int?> measureLatency(
     String host,
     int port, {
