@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:isolate';
 import 'dart:math';
 
 import 'package:flutter/foundation.dart';
@@ -42,10 +43,8 @@ class ServerRemoteDataSource {
             .get(uri, headers: headers)
             .timeout(const Duration(seconds: 10));
         if (response.statusCode == 200 && response.body.isNotEmpty) {
-          final servers = parseVpnGateCsv(response.body);
+          final servers = await parseCatalogInBackground(response.body);
           if (servers.isNotEmpty) return servers;
-          final jsonServers = parseVpnGateJson(response.body);
-          if (jsonServers.isNotEmpty) return jsonServers;
         }
       } catch (e) {
         debugPrint('Custom API endpoint ($customUrl) failed: $e');
@@ -77,10 +76,7 @@ class ServerRemoteDataSource {
           // The catalog is ~1 MB; slow mobile links need more than 15 s.
           .timeout(const Duration(seconds: 35));
       if (response.statusCode != 200 || response.body.isEmpty) return [];
-
-      final csvServers = parseVpnGateCsv(response.body);
-      if (csvServers.isNotEmpty) return csvServers;
-      return parseVpnGateJson(response.body);
+      return await parseCatalogInBackground(response.body);
     } catch (e) {
       debugPrint('VPN Gate catalog unavailable at $endpoint: $e');
       return [];
@@ -90,7 +86,19 @@ class ServerRemoteDataSource {
   /// VPN Gate sorts by score, so rare countries sit near the end of the list.
   static const int _maxCatalogRows = 300;
 
-  List<VpnServer> parseVpnGateJson(String jsonData) {
+  /// Parses a catalog (CSV, else JSON) on a background isolate: a 1.3 MB
+  /// VPN Gate catalog with hundreds of base64 profiles otherwise freezes the
+  /// UI for a noticeable moment on low-end phones.
+  static Future<List<VpnServer>> parseCatalogInBackground(String body) =>
+      Isolate.run(() {
+        final csv = parseVpnGateCsvData(body);
+        return csv.isNotEmpty ? csv : parseVpnGateJsonData(body);
+      });
+
+  List<VpnServer> parseVpnGateJson(String jsonData) =>
+      parseVpnGateJsonData(jsonData);
+
+  static List<VpnServer> parseVpnGateJsonData(String jsonData) {
     final List<VpnServer> list = [];
     try {
       final decoded = json.decode(jsonData);
@@ -263,6 +271,12 @@ class ServerRemoteDataSource {
     String host,
     int port, {
     Duration timeout = const Duration(milliseconds: 1500),
+  }) => tcpLatency(host, port, timeout: timeout);
+
+  static Future<int?> tcpLatency(
+    String host,
+    int port, {
+    Duration timeout = const Duration(milliseconds: 1500),
   }) async {
     final sw = Stopwatch()..start();
     try {
@@ -282,7 +296,15 @@ class ServerRemoteDataSource {
     Duration timeout = const Duration(milliseconds: 1500),
   }) async {
     if (servers.isEmpty) return [];
+    // Dozens of TLS handshakes: keep their work off the UI isolate.
+    return Isolate.run(() => _probeAll(servers, maxConcurrent, timeout));
+  }
 
+  static Future<List<VpnServer>> _probeAll(
+    List<VpnServer> servers,
+    int maxConcurrent,
+    Duration timeout,
+  ) async {
     // A worker pool rather than fixed batches: one relay that times out on
     // every endpoint must not hold up the probes queued behind it.
     final results = List<VpnServer?>.filled(servers.length, null);
@@ -290,7 +312,7 @@ class ServerRemoteDataSource {
     Future<void> worker() async {
       while (next < servers.length) {
         final index = next++;
-        results[index] = await probeServer(servers[index], timeout: timeout);
+        results[index] = await probeRelay(servers[index], timeout: timeout);
       }
     }
 
@@ -305,6 +327,11 @@ class ServerRemoteDataSource {
   /// answered is moved to the front of the profile, and the relay is marked
   /// verified with the measured latency; otherwise it is marked unavailable.
   Future<VpnServer> probeServer(
+    VpnServer server, {
+    Duration timeout = const Duration(milliseconds: 1500),
+  }) => probeRelay(server, timeout: timeout);
+
+  static Future<VpnServer> probeRelay(
     VpnServer server, {
     Duration timeout = const Duration(milliseconds: 1500),
   }) async {
@@ -351,7 +378,7 @@ class ServerRemoteDataSource {
     if (!server.protocol.toLowerCase().startsWith('tcp')) {
       return server.copyWith(isAvailable: true, lastChecked: checked);
     }
-    final measured = await measureLatency(
+    final measured = await tcpLatency(
       server.host,
       server.port,
       timeout: timeout,

@@ -22,6 +22,13 @@ class AndroidSystem {
   static Future<bool> requestNotificationPermission() =>
       _call('requestNotificationPermission');
 
+  /// Sends the app to the background like the Home button, keeping it alive
+  /// so reopening is instant. Returns false where unsupported.
+  static Future<bool> moveToBackground() => _call('moveToBackground');
+
+  /// Whether this phone has little memory and should use lighter animations.
+  static Future<bool> isLowEndDevice() => _call('isLowEndDevice');
+
   static Future<bool> _call(String method) async {
     if (kIsWeb || !Platform.isAndroid) return false;
     try {

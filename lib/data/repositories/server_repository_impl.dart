@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:isolate';
 
 import 'package:flutter/foundation.dart';
 
@@ -44,7 +45,9 @@ class ServerRepositoryImpl implements ServerRepository {
             ? fetched
             : [
                 ...fetched,
-                ..._loadPersistedCatalog().where(VpnBookDataSource.isVpnBook),
+                ...(await _loadPersistedCatalog()).where(
+                  VpnBookDataSource.isVpnBook,
+                ),
               ];
         _cachedServers = merged;
         unawaited(_persistCatalog(merged));
@@ -56,7 +59,7 @@ class ServerRepositoryImpl implements ServerRepository {
 
     // Live catalog unreachable (slow link, blocked host): prefer the last
     // catalog this device fetched, then the bundled official-relay snapshot.
-    final persisted = _loadPersistedCatalog();
+    final persisted = await _loadPersistedCatalog();
     if (persisted.isNotEmpty) {
       debugPrint(
         'ServerRepositoryImpl: using ${persisted.length} cached relays.',
@@ -84,21 +87,25 @@ class ServerRepositoryImpl implements ServerRepository {
               .take(_persistedPerCountry)
               .map((s) => s.toJson()),
       ];
-      await preferencesRepo.setCachedRelayCatalog(jsonEncode(payload));
+      // Hundreds of KB of profiles: encode off the UI isolate.
+      final encoded = await Isolate.run(() => jsonEncode(payload));
+      await preferencesRepo.setCachedRelayCatalog(encoded);
     } catch (e) {
       debugPrint('ServerRepositoryImpl: could not cache catalog: $e');
     }
   }
 
-  List<VpnServer> _loadPersistedCatalog() {
+  Future<List<VpnServer>> _loadPersistedCatalog() async {
     final raw = preferencesRepo.cachedRelayCatalog;
     if (raw == null || raw.isEmpty) return const [];
     try {
-      return (jsonDecode(raw) as List)
-          .whereType<Map<String, dynamic>>()
-          .map(VpnServer.fromJson)
-          .where((s) => s.ovpnConfig.isNotEmpty)
-          .toList(growable: false);
+      return await Isolate.run(
+        () => (jsonDecode(raw) as List)
+            .whereType<Map<String, dynamic>>()
+            .map(VpnServer.fromJson)
+            .where((s) => s.ovpnConfig.isNotEmpty)
+            .toList(growable: false),
+      );
     } catch (e) {
       debugPrint('ServerRepositoryImpl: cached catalog unreadable: $e');
       return const [];

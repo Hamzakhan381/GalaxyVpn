@@ -6,6 +6,7 @@ import '../../app/theme/app_colors.dart';
 import '../../app/theme/app_text_styles.dart';
 import '../../domain/entities/vpn_connection_state.dart';
 import 'galaxy_starfield.dart';
+import 'motion.dart';
 
 /// Premium cybersecurity connect/disconnect button with smooth circular state animation.
 ///
@@ -62,8 +63,21 @@ class _ConnectionOrbState extends State<ConnectionOrb>
     );
 
     if (!_isTestEnvironment) {
-      _breathCtrl.repeat(reverse: true);
       _updateAnimations(widget.state);
+    }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // The idle breathing of the ring is decoration: hold it still below full
+    // animation quality. The connecting spinner still runs, as it shows progress.
+    if (_isTestEnvironment || Motion.isLite(context)) {
+      _breathCtrl
+        ..stop()
+        ..value = 1.0;
+    } else if (!_breathCtrl.isAnimating) {
+      _breathCtrl.repeat(reverse: true);
     }
   }
 

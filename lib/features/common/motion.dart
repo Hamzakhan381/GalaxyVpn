@@ -1,8 +1,59 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:provider/provider.dart';
 
-import '../../core/storage/preferences_service.dart';
+import '../../domain/repositories/preferences_repository.dart';
+
+/// How much the interface animates.
+enum MotionLevel {
+  /// Every effect, including always-running decorative loops.
+  full,
+
+  /// For low-end phones: decorative loops (star field, backgrounds, idle
+  /// pulses) hold still and drop their blur; short transitions and progress
+  /// spinners remain, so idle screens stop redrawing.
+  lite,
+
+  /// No animation beyond what shows progress.
+  off;
+
+  static MotionLevel? parse(String? name) {
+    for (final level in values) {
+      if (level.name == name) return level;
+    }
+    return null;
+  }
+}
+
+/// The chosen [MotionLevel]: persisted, and observed through [MotionScope] so
+/// every animation updates as soon as the setting changes.
+class MotionSettings extends ChangeNotifier {
+  final PreferencesRepository _prefs;
+  MotionLevel _level;
+
+  MotionSettings(this._prefs)
+    : _level = MotionLevel.parse(_prefs.motionLevel) ?? MotionLevel.full;
+
+  MotionLevel get level => _level;
+
+  Future<void> setLevel(MotionLevel level) async {
+    if (level == _level) return;
+    _level = level;
+    notifyListeners();
+    await _prefs.setMotionLevel(level.name);
+  }
+}
+
+/// Provides [MotionSettings] to the whole app.
+class MotionScope extends InheritedNotifier<MotionSettings> {
+  const MotionScope({
+    super.key,
+    required MotionSettings settings,
+    required super.child,
+  }) : super(notifier: settings);
+
+  static MotionSettings? settingsOf(BuildContext context) =>
+      context.getInheritedWidgetOfExactType<MotionScope>()?.notifier;
+}
 
 /// Shared motion primitives so every screen moves with the same rhythm.
 class Motion {
@@ -18,16 +69,27 @@ class Motion {
   static bool get isTestEnvironment =>
       WidgetsBinding.instance.runtimeType.toString().contains('Test');
 
-  /// True when the user asked for less motion, either through the in-app
-  /// "Reduce Motion" setting or the platform accessibility flag.
-  static bool isReduced(BuildContext context) {
-    if (MediaQuery.maybeDisableAnimationsOf(context) ?? false) return true;
-    try {
-      return context.read<PreferencesService>().reduceMotion;
-    } catch (_) {
-      return false;
+  /// The effective level: the in-app setting, or [MotionLevel.off] when the
+  /// platform's "remove animations" accessibility flag is on. Widgets that
+  /// read it rebuild when it changes.
+  static MotionLevel levelOf(BuildContext context) {
+    if (MediaQuery.maybeDisableAnimationsOf(context) ?? false) {
+      return MotionLevel.off;
     }
+    return context
+            .dependOnInheritedWidgetOfExactType<MotionScope>()
+            ?.notifier
+            ?.level ??
+        MotionLevel.full;
   }
+
+  /// True when animations are off: skip transitions and entrances too.
+  static bool isReduced(BuildContext context) =>
+      levelOf(context) == MotionLevel.off;
+
+  /// True below full quality: hold always-running decorative effects still.
+  static bool isLite(BuildContext context) =>
+      levelOf(context) != MotionLevel.full;
 }
 
 /// Lets a subtree replay its [AnimatedFadeSlide] entrances, e.g. each time a
@@ -216,7 +278,7 @@ class _PulsingDotState extends State<PulsingDot>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (Motion.isTestEnvironment || Motion.isReduced(context)) {
+    if (Motion.isTestEnvironment || Motion.isLite(context)) {
       _ctrl.stop();
     } else if (!_ctrl.isAnimating) {
       _ctrl.repeat();

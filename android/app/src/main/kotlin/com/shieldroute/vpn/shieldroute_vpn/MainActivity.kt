@@ -1,6 +1,7 @@
 package com.shieldroute.vpn.shieldroute_vpn
 
 import android.Manifest
+import android.app.ActivityManager
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.VpnService
@@ -18,6 +19,9 @@ class MainActivity : FlutterActivity() {
         private const val EVENT_CHANNEL = "com.galaxyvpn/events"
         private const val VPN_REQUEST_CODE = 1024
         private const val NOTIFICATION_REQUEST_CODE = 1025
+
+        /** Under ~3 GB of RAM (Android reports a little less than installed). */
+        private const val LOW_END_RAM_BYTES = 3_200_000_000L
     }
 
     private var pendingPermissionResult: MethodChannel.Result? = null
@@ -91,6 +95,18 @@ class MainActivity : FlutterActivity() {
                             startActivity(Intent(Settings.ACTION_WIRELESS_SETTINGS))
                         }.isSuccess
                         result.success(opened)
+                    }
+                    // Back on the home screen: keep the app (and its engine)
+                    // alive in the background instead of finishing it, so
+                    // reopening is instant and shows the live connection.
+                    "moveToBackground" -> result.success(moveTaskToBack(true))
+                    // Phones with little memory get lighter animations.
+                    "isLowEndDevice" -> {
+                        val am = getSystemService(ActivityManager::class.java)
+                        val memory = ActivityManager.MemoryInfo().also { am?.getMemoryInfo(it) }
+                        result.success(
+                            am?.isLowRamDevice == true || memory.totalMem in 1 until LOW_END_RAM_BYTES,
+                        )
                     }
                     // Android 13+ hides the connection notification (and its
                     // Disconnect action) until this is granted.

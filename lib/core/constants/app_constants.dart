@@ -25,6 +25,7 @@ class AppConstants {
   static const String keyReconnectOnNetwork = 'setting_reconnect_network';
   static const String keyPreferredProtocol = 'setting_preferred_protocol';
   static const String keyReduceMotion = 'setting_reduce_motion';
+  static const String keyMotionLevel = 'setting_motion_level';
   static const String keyEmulatorMode = 'setting_emulator_mode';
   static const String keySelectedServer = 'selected_server_cache';
   static const String keyRelayCatalogCache = 'relay_catalog_cache';

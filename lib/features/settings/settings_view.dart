@@ -128,6 +128,8 @@ class _SettingsViewState extends State<SettingsView> {
   @override
   Widget build(BuildContext context) {
     final prefs = context.watch<PreferencesService>();
+    // Outside the app's MotionScope (tests) a local copy still saves the choice.
+    final motion = MotionScope.settingsOf(context) ?? MotionSettings(prefs);
     final vpnRepo = context.read<VpnController>();
     final auth = context.watch<AuthRepository>();
 
@@ -322,19 +324,11 @@ class _SettingsViewState extends State<SettingsView> {
                     _buildSectionHeader('APPEARANCE'),
                     _buildCard([
                       SettingsRow(
-                        icon: Icons.motion_photos_off_outlined,
-                        title: 'Reduce Motion',
-                        subtitle: 'Minimize subtle animations and transitions',
+                        icon: Icons.animation_rounded,
+                        title: 'Animations',
+                        subtitle: _motionLabels[motion.level]!.$1,
                         showDivider: false,
-                        trailing: Switch(
-                          value: prefs.reduceMotion,
-                          activeThumbColor: AppColors.pureWhite,
-                          activeTrackColor: AppColors.connectedStatus,
-                          onChanged: (val) async {
-                            await prefs.setReduceMotion(val);
-                            setState(() {});
-                          },
-                        ),
+                        onTap: () => _showMotionDialog(context, motion),
                       ),
                     ]),
                   ],
@@ -545,6 +539,72 @@ class _SettingsViewState extends State<SettingsView> {
         borderRadius: BorderRadius.circular(18),
         clipBehavior: Clip.antiAlias,
         child: Column(children: children),
+      ),
+    );
+  }
+
+  static const Map<MotionLevel, (String, String)> _motionLabels = {
+    MotionLevel.full: ('Full', 'Every effect, including the star field'),
+    MotionLevel.lite: (
+      'Lite (for low-end phones)',
+      'Still backgrounds and stars, smoother and lighter on battery',
+    ),
+    MotionLevel.off: ('Off', 'No animations'),
+  };
+
+  void _showMotionDialog(BuildContext context, MotionSettings motion) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.elevatedSurface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: const BorderSide(color: AppColors.borderDivider),
+        ),
+        title: Text(
+          'Animations',
+          style: AppTextStyles.headlineSm.copyWith(
+            color: AppColors.primaryText,
+          ),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (final level in MotionLevel.values)
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                title: Text(
+                  _motionLabels[level]!.$1,
+                  style: TextStyle(
+                    color: motion.level == level
+                        ? AppColors.primaryText
+                        : AppColors.secondaryText,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                subtitle: Text(
+                  _motionLabels[level]!.$2,
+                  style: const TextStyle(
+                    color: AppColors.mutedText,
+                    fontSize: 12,
+                  ),
+                ),
+                trailing: Icon(
+                  motion.level == level
+                      ? Icons.check_circle_rounded
+                      : Icons.circle_outlined,
+                  color: motion.level == level
+                      ? AppColors.primaryText
+                      : AppColors.mutedText,
+                ),
+                onTap: () async {
+                  await motion.setLevel(level);
+                  if (ctx.mounted) Navigator.of(ctx).pop();
+                  if (mounted) setState(() {});
+                },
+              ),
+          ],
+        ),
       ),
     );
   }

@@ -2,11 +2,11 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app/app.dart';
+import 'core/platform/android_system.dart';
 import 'core/storage/preferences_service.dart';
 import 'data/datasources/platform/unified_vpn_platform_data_source.dart';
 import 'data/repositories/auth_repository_impl.dart';
@@ -15,13 +15,11 @@ import 'data/repositories/server_repository_impl.dart';
 import 'domain/repositories/auth_repository.dart';
 import 'domain/repositories/connectivity_repository.dart';
 import 'domain/repositories/preferences_repository.dart';
+import 'features/common/motion.dart';
 import 'presentation/controllers/vpn_controller.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
-  // Prevent GoogleFonts from attempting network downloads during startup or offline
-  GoogleFonts.config.allowRuntimeFetching = false;
 
   // Last-resort handlers: an unexpected error is logged instead of taking the
   // app (and the user's view of their connection) down.
@@ -62,6 +60,19 @@ Future<void> main() async {
 
   final prefsService = PreferencesService(sharedPreferences);
 
+  // First launch: start low-memory phones on lighter animations. The user can
+  // change it any time under Settings › Animations.
+  if (prefsService.motionLevel == null) {
+    final lowEnd = await AndroidSystem.isLowEndDevice().timeout(
+      const Duration(seconds: 1),
+      onTimeout: () => false,
+    );
+    await prefsService.setMotionLevel(
+      (lowEnd ? MotionLevel.lite : MotionLevel.full).name,
+    );
+  }
+  final motionSettings = MotionSettings(prefsService);
+
   // Instantiate Clean Architecture platform and domain services
   final vpnService = UnifiedVpnPlatformDataSource(prefs: prefsService);
   unawaited(
@@ -92,7 +103,7 @@ Future<void> main() async {
         Provider<ConnectivityRepository>.value(value: connectivityRepository),
         ChangeNotifierProvider<VpnController>.value(value: vpnController),
       ],
-      child: const GalaxyVpnApp(),
+      child: MotionScope(settings: motionSettings, child: const GalaxyVpnApp()),
     ),
   );
 }

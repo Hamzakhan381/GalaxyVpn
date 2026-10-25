@@ -70,6 +70,13 @@ class PreferencesRepositoryImpl implements PreferencesRepository {
   Future<bool> setReduceMotion(bool val) => _dataSource.setReduceMotion(val);
 
   @override
+  String? get motionLevel => _dataSource.motionLevel;
+
+  @override
+  Future<bool> setMotionLevel(String level) =>
+      _dataSource.setMotionLevel(level);
+
+  @override
   bool get emulatorMode => _dataSource.emulatorMode;
 
   @override

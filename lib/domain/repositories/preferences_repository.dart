@@ -33,6 +33,11 @@ abstract class PreferencesRepository {
   bool get reduceMotion;
   Future<bool> setReduceMotion(bool val);
 
+  /// Animation level: 'full', 'lite' (low-end phones) or 'off'; null until
+  /// chosen, so first launch can pick one for the device.
+  String? get motionLevel;
+  Future<bool> setMotionLevel(String level);
+
   bool get emulatorMode;
   Future<bool> setEmulatorMode(bool val);
 

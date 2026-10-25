@@ -40,6 +40,10 @@ class _SplashViewState extends State<SplashView> with TickerProviderStateMixin {
   // The intro deliberately runs a little over five seconds so the brand
   // sequence plays in full; the hard timeout is only a safety net.
   static const Duration _introDuration = Duration(milliseconds: 5200);
+
+  /// Returning users (and lite animations) get the same sequence, fast, so
+  /// reopening the app takes about a second instead of five.
+  static const Duration _quickIntroDuration = Duration(milliseconds: 1300);
   static const Duration _loadTimeout = Duration(seconds: 5);
   static const Duration _hardTimeout = Duration(milliseconds: 6500);
 
@@ -68,6 +72,7 @@ class _SplashViewState extends State<SplashView> with TickerProviderStateMixin {
   bool _navigated = false;
   bool _lockHapticFired = false;
   bool _reduceMotion = false;
+  bool _lite = false;
   PreferencesService? _cachedPrefs;
 
   static const List<_BootStep> _steps = [
@@ -128,7 +133,8 @@ class _SplashViewState extends State<SplashView> with TickerProviderStateMixin {
       _cachedPrefs ??= context.read<PreferencesService>();
     } catch (_) {}
     _reduceMotion = Motion.isReduced(context);
-    if (_reduceMotion) {
+    _lite = Motion.isLite(context);
+    if (_lite) {
       _loop.stop();
     } else if (!_loop.isAnimating) {
       _loop.repeat();
@@ -145,6 +151,15 @@ class _SplashViewState extends State<SplashView> with TickerProviderStateMixin {
   Future<void> _run() async {
     // Opportunistically preload servers in the background without blocking the intro
     unawaited(_loadServers());
+
+    if (_reduceMotion) {
+      _navigateNext();
+      return;
+    }
+    final prefs = _cachedPrefs;
+    final returning =
+        prefs != null && prefs.isAuthenticated && prefs.hasGrantedVpnConsent;
+    if (returning || _lite) _intro.duration = _quickIntroDuration;
 
     try {
       await _intro.forward().orCancel;

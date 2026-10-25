@@ -1,3 +1,4 @@
+import 'dart:isolate';
 import 'dart:math';
 
 import 'package:flutter/foundation.dart';
@@ -75,7 +76,9 @@ class VpnBookDataSource {
           .get(Uri.parse(pageUrl), headers: const {'Accept': 'text/html'})
           .timeout(const Duration(seconds: 15));
       if (response.statusCode != 200) return const [];
-      final page = parsePage(response.body);
+      // A 240 KB page of regex work: parse it off the UI isolate.
+      final body = response.body;
+      final page = await Isolate.run(() => parsePage(body));
       if (page == null) return const [];
       final template = await _bundle.loadString(templateAsset);
       return buildServers(page, template);

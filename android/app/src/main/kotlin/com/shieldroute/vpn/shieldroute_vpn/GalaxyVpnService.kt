@@ -248,8 +248,14 @@ class GalaxyVpnService : VpnService() {
     }
 
     private fun buildNotification(text: String): Notification {
+        // Same intent as the launcher icon, so Android brings the running app
+        // to the front. A plain MainActivity intent opened a second copy in a
+        // new task (the activity has no task affinity) and restarted the app.
+        val launch = packageManager.getLaunchIntentForPackage(packageName)
+            ?: Intent(this, MainActivity::class.java)
+        launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED)
         val openApp = PendingIntent.getActivity(
-            this, 0, Intent(this, MainActivity::class.java),
+            this, 0, launch,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
         val disconnect = PendingIntent.getService(

@@ -6,6 +6,7 @@ import '../../data/models/vpn_server.dart';
 import '../../domain/entities/vpn_connection_state.dart';
 import '../../presentation/controllers/vpn_controller.dart';
 import 'country_badge.dart';
+import 'motion.dart';
 
 /// Suggests a relay using reported throughput and measured TCP latency where
 /// the selected profile supports a TCP probe.
@@ -73,11 +74,20 @@ class _FastestServerCardState extends State<FastestServerCard>
       vsync: this,
       duration: const Duration(milliseconds: 3200),
     );
+  }
 
-    if (!_isTestEnvironment) {
-      _ambientCtrl.repeat(reverse: true);
-      _radarCtrl.repeat();
-      _shimmerCtrl.repeat();
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Aura, radar ping and shimmer loop forever: decoration only, so they
+    // hold still below full animation quality.
+    final animate = !_isTestEnvironment && !Motion.isLite(context);
+    for (final ctrl in [_ambientCtrl, _radarCtrl, _shimmerCtrl]) {
+      if (animate && !ctrl.isAnimating) {
+        ctrl.repeat(reverse: identical(ctrl, _ambientCtrl));
+      } else if (!animate && ctrl.isAnimating) {
+        ctrl.stop();
+      }
     }
   }
 
@@ -179,7 +189,7 @@ class _FastestServerCardState extends State<FastestServerCard>
             child: Stack(
               children: [
                 // ── Subtle Shimmer Highlight Sweep ──────────────────────────
-                if (!_isTestEnvironment)
+                if (!_isTestEnvironment && !Motion.isLite(context))
                   Positioned.fill(
                     child: IgnorePointer(
                       child: CustomPaint(
@@ -385,7 +395,7 @@ class _FastestServerCardState extends State<FastestServerCard>
                   child: Stack(
                     alignment: Alignment.center,
                     children: [
-                      if (!_isTestEnvironment)
+                      if (!_isTestEnvironment && !Motion.isLite(context))
                         AnimatedBuilder(
                           animation: _radarCtrl,
                           builder: (context, _) {

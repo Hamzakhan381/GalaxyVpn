@@ -53,20 +53,25 @@ class _GalaxyStarfieldState extends State<GalaxyStarfield>
     _reveal.addStatusListener((status) {
       if (status == AnimationStatus.dismissed) _orbit.stop();
     });
-    if (widget.active) _startOrbit();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _syncOrbit();
   }
 
   @override
   void didUpdateWidget(covariant GalaxyStarfield oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.active == widget.active) return;
+    _syncOrbit();
     if (widget.active) {
-      _startOrbit();
       if (Motion.isTestEnvironment) {
         _reveal.value = 1.0;
       } else {
         _reveal.forward();
-        if (!Motion.isReduced(context)) _burst.forward(from: 0);
+        if (!Motion.isLite(context)) _burst.forward(from: 0);
       }
     } else if (Motion.isTestEnvironment) {
       _reveal.value = 0.0;
@@ -76,10 +81,17 @@ class _GalaxyStarfieldState extends State<GalaxyStarfield>
     }
   }
 
-  void _startOrbit() {
-    // Never loop forever under test: pumpAndSettle would never return.
-    if (Motion.isTestEnvironment || _orbit.isAnimating) return;
-    _orbit.repeat();
+  /// Rotation and twinkle loop for as long as the tunnel is up, so they only
+  /// run at full animation quality. Never under test: pumpAndSettle would
+  /// never return.
+  void _syncOrbit() {
+    final run =
+        widget.active && !Motion.isTestEnvironment && !Motion.isLite(context);
+    if (run && !_orbit.isAnimating) {
+      _orbit.repeat();
+    } else if (!run && _orbit.isAnimating) {
+      _orbit.stop();
+    }
   }
 
   @override
@@ -92,8 +104,8 @@ class _GalaxyStarfieldState extends State<GalaxyStarfield>
 
   @override
   Widget build(BuildContext context) {
-    final reduced = Motion.isReduced(context);
-    if (reduced && _orbit.isAnimating) _orbit.stop();
+    // Lite: a still star field without blur, which low-end GPUs struggle with.
+    final lite = Motion.isLite(context);
 
     return IgnorePointer(
       child: AnimatedBuilder(
@@ -102,10 +114,11 @@ class _GalaxyStarfieldState extends State<GalaxyStarfield>
           painter: _GalaxyPainter(
             stars: _stars,
             shootingStars: _shootingStars,
-            time: reduced ? 0.0 : _orbit.value,
+            time: lite ? 0.0 : _orbit.value,
             reveal: _reveal.value,
             burst: _burst.value,
-            twinkle: !reduced,
+            twinkle: !lite,
+            withGlow: !lite,
           ),
         ),
       ),
@@ -237,6 +250,9 @@ class _GalaxyPainter extends CustomPainter {
   final double burst;
   final bool twinkle;
 
+  /// Blurred halos and sparkles; off in lite mode.
+  final bool withGlow;
+
   _GalaxyPainter({
     required this.stars,
     required this.shootingStars,
@@ -244,6 +260,7 @@ class _GalaxyPainter extends CustomPainter {
     required this.reveal,
     required this.burst,
     required this.twinkle,
+    required this.withGlow,
   });
 
   @override
@@ -301,16 +318,18 @@ class _GalaxyPainter extends CustomPainter {
           : 0.75;
       final brightness = (0.25 + 0.75 * blink) * depth * local * spread;
 
-      glow
-        ..color = color.withValues(alpha: 0.45 * brightness)
-        ..maskFilter = MaskFilter.blur(BlurStyle.normal, star.radius * 1.6);
-      canvas.drawCircle(pos, star.radius * 1.8, glow);
+      if (withGlow) {
+        glow
+          ..color = color.withValues(alpha: 0.45 * brightness)
+          ..maskFilter = MaskFilter.blur(BlurStyle.normal, star.radius * 1.6);
+        canvas.drawCircle(pos, star.radius * 1.8, glow);
+      }
 
       core.color = color.withValues(alpha: brightness.clamp(0.0, 1.0));
       canvas.drawCircle(pos, star.radius * (0.85 + 0.25 * blink), core);
 
       // The brightest stars flash a four-point sparkle at the peak of a blink.
-      if (star.radius >= 2.0 && blink > 0.8) {
+      if (withGlow && star.radius >= 2.0 && blink > 0.8) {
         final flash = ((blink - 0.8) / 0.2) * brightness;
         final arm = star.radius * 2.6 * flash + star.radius;
         sparkle.color = color.withValues(alpha: 0.7 * flash);
@@ -401,5 +420,6 @@ class _GalaxyPainter extends CustomPainter {
       old.time != time ||
       old.reveal != reveal ||
       old.burst != burst ||
-      old.twinkle != twinkle;
+      old.twinkle != twinkle ||
+      old.withGlow != withGlow;
 }

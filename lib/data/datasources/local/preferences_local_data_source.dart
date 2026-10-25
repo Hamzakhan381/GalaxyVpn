@@ -98,6 +98,16 @@ class PreferencesLocalDataSource {
   Future<bool> setReduceMotion(bool val) =>
       _prefs.setBool(AppConstants.keyReduceMotion, val);
 
+  /// Falls back to the older on/off "Reduce Motion" switch.
+  String? get motionLevel =>
+      _prefs.getString(AppConstants.keyMotionLevel) ??
+      (reduceMotion ? 'off' : null);
+
+  Future<bool> setMotionLevel(String level) async {
+    await setReduceMotion(level == 'off');
+    return _prefs.setString(AppConstants.keyMotionLevel, level);
+  }
+
   bool get emulatorMode =>
       _prefs.getBool(AppConstants.keyEmulatorMode) ?? false;
 

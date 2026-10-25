@@ -8,6 +8,7 @@ import 'package:galaxy_vpn/data/repositories/auth_repository_impl.dart';
 import 'package:galaxy_vpn/data/repositories/server_repository_impl.dart';
 import 'package:galaxy_vpn/domain/repositories/auth_repository.dart';
 import 'package:galaxy_vpn/domain/repositories/connectivity_repository.dart';
+import 'package:galaxy_vpn/features/home/main_navigation_shell.dart';
 import 'package:galaxy_vpn/features/splash/splash_view.dart';
 import 'package:galaxy_vpn/presentation/controllers/vpn_controller.dart';
 import 'package:provider/provider.dart';
@@ -192,4 +193,59 @@ void main() {
       expect(find.text('UNPROTECTED'), findsOneWidget);
     },
   );
+
+  testWidgets('returning users get a quick intro instead of five seconds', (
+    tester,
+  ) async {
+    useTallScreen(tester);
+    await prefs.saveAuth(
+      email: 'test@example.com',
+      name: 'Test User',
+      isGuest: false,
+    );
+    await prefs.setVpnConsent(true);
+
+    await tester.pumpWidget(buildSplashApp());
+    for (int i = 0; i < 25; i++) {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+
+    expect(find.text('UNPROTECTED'), findsOneWidget);
+    // Let the background server preload timeout finish.
+    await tester.pump(const Duration(seconds: 6));
+  });
+
+  testWidgets('back returns to the Home tab and never closes the app', (
+    tester,
+  ) async {
+    useTallScreen(tester);
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          Provider<PreferencesService>.value(value: prefs),
+          Provider<AuthRepository>.value(value: auth),
+          Provider<ConnectivityRepository>.value(value: connectivity),
+          ChangeNotifierProvider<VpnController>.value(value: repository),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.lightTheme,
+          home: const MainNavigationShell(),
+        ),
+      ),
+    );
+    await tester.pump(const Duration(seconds: 1));
+
+    await tester.tap(find.text('Activity'));
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.text('UNPROTECTED'), findsNothing);
+
+    await tester.binding.handlePopRoute();
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.text('UNPROTECTED'), findsOneWidget);
+
+    // On Home, back sends the app to the background instead of popping it.
+    await tester.binding.handlePopRoute();
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.byType(MainNavigationShell), findsOneWidget);
+  });
 }

@@ -49,27 +49,34 @@ class _CyberBackgroundState extends State<CyberBackground>
       vsync: this,
       duration: const Duration(seconds: 10),
     );
+  }
 
-    if (!_isTestEnvironment) {
-      if (widget.animateGlow) {
-        _animCtrl.repeat(reverse: true);
-      }
-      if (widget.enableVpnVideoEffect) {
-        _videoCtrl.repeat();
-      }
-    }
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _syncLoops();
   }
 
   @override
   void didUpdateWidget(covariant CyberBackground oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (!_isTestEnvironment) {
-      if (widget.enableVpnVideoEffect && !_videoCtrl.isAnimating) {
-        _videoCtrl.repeat();
-      } else if (!widget.enableVpnVideoEffect && _videoCtrl.isAnimating) {
-        _videoCtrl.stop();
+    _syncLoops();
+  }
+
+  /// The glow and network effect loop forever behind every screen, so they
+  /// only run at full animation quality; otherwise the backdrop is still.
+  void _syncLoops() {
+    final animate = !_isTestEnvironment && !Motion.isLite(context);
+    void sync(AnimationController ctrl, bool on, {bool reverse = false}) {
+      if (on && !ctrl.isAnimating) {
+        ctrl.repeat(reverse: reverse);
+      } else if (!on && ctrl.isAnimating) {
+        ctrl.stop();
       }
     }
+
+    sync(_animCtrl, animate && widget.animateGlow, reverse: true);
+    sync(_videoCtrl, animate && widget.enableVpnVideoEffect);
   }
 
   @override

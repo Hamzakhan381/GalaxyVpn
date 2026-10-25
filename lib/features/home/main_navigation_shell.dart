@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../app/theme/app_colors.dart';
+import '../../core/platform/android_system.dart';
 import '../../core/storage/preferences_service.dart';
 import '../../domain/entities/vpn_connection_state.dart';
 import '../../domain/repositories/connectivity_repository.dart';
@@ -152,10 +153,16 @@ class _MainNavigationShellState extends State<MainNavigationShell>
     ];
 
     return PopScope(
-      canPop: _currentIndex == 0,
-      onPopInvokedWithResult: (didPop, _) {
-        if (!didPop && _currentIndex != 0) {
+      // Back never closes the app: it returns to the Home tab, then sends the
+      // app to the background (like the Home button) so it reopens instantly
+      // on the live connection instead of restarting from the splash screen.
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop) return;
+        if (_currentIndex != 0) {
           _onTabSelected(0);
+        } else if (!await AndroidSystem.moveToBackground()) {
+          await SystemNavigator.pop();
         }
       },
       child: Scaffold(
@@ -173,9 +180,14 @@ class _MainNavigationShellState extends State<MainNavigationShell>
                 index: _currentIndex,
                 children: [
                   for (int i = 0; i < pages.length; i++)
-                    EntranceReplay(
-                      trigger: _replayTriggers[i],
-                      child: pages[i],
+                    // Hidden tabs stay alive (state and scroll position kept)
+                    // but their animations pause instead of ticking unseen.
+                    TickerMode(
+                      enabled: i == _currentIndex,
+                      child: EntranceReplay(
+                        trigger: _replayTriggers[i],
+                        child: pages[i],
+                      ),
                     ),
                 ],
               ),

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../app/theme/app_colors.dart';
 import '../../app/theme/app_text_styles.dart';
 import '../../domain/entities/vpn_connection_state.dart';
+import 'motion.dart';
 
 /// Pill-shaped status badge with restrained status colors.
 class ConnectionStatusBadge extends StatefulWidget {
@@ -28,7 +29,16 @@ class _ConnectionStatusBadgeState extends State<ConnectionStatusBadge>
       vsync: this,
       duration: const Duration(milliseconds: 1400),
     );
-    if (!_isTestEnvironment) {
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_isTestEnvironment || Motion.isLite(context)) {
+      _pulseCtrl
+        ..stop()
+        ..value = 1.0;
+    } else if (!_pulseCtrl.isAnimating) {
       _pulseCtrl.repeat(reverse: true);
     }
   }

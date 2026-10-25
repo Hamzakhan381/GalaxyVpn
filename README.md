@@ -25,7 +25,7 @@
 - **Android Min SDK:** 24 (Android 7.0 Nougat)
 - **State Management:** Provider / ChangeNotifier
 - **VPN Core:** SSTP (TLS-wrapped, native `VpnService`) with OpenVPN 2.7 fallback via `axevpn_flutter`
-- **Typography:** Inter (Google Fonts)
+- **Typography:** Platform system font (Roboto on Android) with the Stitch type scale
 
 ---
 
