@@ -7,10 +7,13 @@ import android.content.pm.PackageManager
 import android.net.VpnService
 import android.os.Build
 import android.provider.Settings
+import com.axevpn.flutter.openvpn.AxeVPNFlutterPlugin
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
+import io.flutter.embedding.engine.FlutterShellArgs
 import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodChannel
+import io.flutter.plugins.sharedpreferences.SharedPreferencesPlugin
 
 class MainActivity : FlutterActivity() {
 
@@ -27,8 +30,37 @@ class MainActivity : FlutterActivity() {
     private var pendingPermissionResult: MethodChannel.Result? = null
     private var pendingNotificationResult: MethodChannel.Result? = null
 
+    private var vpnPluginAttached = false
+    private val vpnPluginWaiters = mutableListOf<MethodChannel.Result>()
+
+    private val isLowEndDevice: Boolean by lazy {
+        val am = getSystemService(ActivityManager::class.java)
+        val memory = ActivityManager.MemoryInfo().also { am?.getMemoryInfo(it) }
+        am?.isLowRamDevice == true || memory.totalMem in 1 until LOW_END_RAM_BYTES
+    }
+
+    /**
+     * Budget GPUs often ship Vulkan drivers that stall Flutter's first frame,
+     * leaving the app on Android's launch screen. OpenGL ES is the reliable
+     * path there, and lazy shader setup spreads the GPU's start-up work out.
+     */
+    override fun getFlutterShellArgs(): FlutterShellArgs {
+        val args = super.getFlutterShellArgs()
+        if (isLowEndDevice) {
+            args.add("--impeller-backend=opengles")
+            args.add("--impeller-lazy-shader-mode")
+        }
+        return args
+    }
+
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
-        super.configureFlutterEngine(flutterEngine)
+        // Plugins are registered here rather than by super's generated
+        // registrant: the VPN plugin loads several native libraries and boots
+        // WireGuard's Go runtime when attached, which on the main thread kept
+        // low-end phones on the launch screen. It attaches once that work has
+        // finished on a background thread.
+        flutterEngine.plugins.add(SharedPreferencesPlugin())
+        attachVpnPluginInBackground(flutterEngine)
 
         EventChannel(flutterEngine.dartExecutor.binaryMessenger, EVENT_CHANNEL)
             .setStreamHandler(object : EventChannel.StreamHandler {
@@ -86,6 +118,10 @@ class MainActivity : FlutterActivity() {
                         result.success(true)
                     }
                     "getState" -> result.success(GalaxyVpnService.currentState)
+                    // Completes once the OpenVPN plugin is attached.
+                    "waitForVpnEngine" -> {
+                        if (vpnPluginAttached) result.success(true) else vpnPluginWaiters.add(result)
+                    }
                     // Android's VPN screen, where Always-on VPN and "Block
                     // connections without VPN" (the system kill switch) live.
                     "openVpnSettings" -> {
@@ -101,13 +137,7 @@ class MainActivity : FlutterActivity() {
                     // reopening is instant and shows the live connection.
                     "moveToBackground" -> result.success(moveTaskToBack(true))
                     // Phones with little memory get lighter animations.
-                    "isLowEndDevice" -> {
-                        val am = getSystemService(ActivityManager::class.java)
-                        val memory = ActivityManager.MemoryInfo().also { am?.getMemoryInfo(it) }
-                        result.success(
-                            am?.isLowRamDevice == true || memory.totalMem in 1 until LOW_END_RAM_BYTES,
-                        )
-                    }
+                    "isLowEndDevice" -> result.success(isLowEndDevice)
                     // Android 13+ hides the connection notification (and its
                     // Disconnect action) until this is granted.
                     "requestNotificationPermission" -> {
@@ -129,6 +159,24 @@ class MainActivity : FlutterActivity() {
                     else -> result.notImplemented()
                 }
             }
+    }
+
+    private fun attachVpnPluginInBackground(engine: FlutterEngine) {
+        Thread({
+            // Initialising the plugin class runs its System.loadLibrary calls;
+            // GoBackend (created on attach) loads and boots WireGuard's Go
+            // runtime, so preload that library here too.
+            runCatching { Class.forName(AxeVPNFlutterPlugin::class.java.name) }
+            runCatching { System.loadLibrary("wg-go") }
+            runOnUiThread {
+                if (isDestroyed) return@runOnUiThread
+                runCatching { engine.plugins.add(AxeVPNFlutterPlugin()) }
+                    .onFailure { android.util.Log.e("MainActivity", "VPN plugin attach failed", it) }
+                vpnPluginAttached = true
+                vpnPluginWaiters.forEach { it.success(true) }
+                vpnPluginWaiters.clear()
+            }
+        }, "vpn-plugin-init").start()
     }
 
     @Deprecated("Deprecated in Java")

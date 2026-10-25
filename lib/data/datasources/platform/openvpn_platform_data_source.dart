@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:axevpn_flutter/openvpn_flutter.dart';
 
+import '../../../core/platform/android_system.dart';
 import '../../../domain/entities/vpn_connection_state.dart';
 import '../../../domain/entities/vpn_live_metrics.dart';
 import '../../../domain/entities/vpn_server.dart';
@@ -62,14 +63,15 @@ class OpenVpnPlatformDataSource implements VpnPlatformDataSource {
 
   Future<void> _initializeEngine() async {
     try {
+      // The plugin attaches after launch, once its native libraries have
+      // loaded off the main thread; its channels do not exist before that.
+      await AndroidSystem.waitForVpnEngine();
       _engine = OpenVPN(
         onVpnStatusChanged: _handleStatusChanged,
         onVpnStageChanged: _handleStageChanged,
       );
 
-      await _engine?.initialize(
-        localizedDescription: 'Galaxy VPN Academic',
-      );
+      await _engine?.initialize(localizedDescription: 'Galaxy VPN Academic');
       _isInitialized = true;
       if (await _engine?.isConnected() ?? false) {
         _updateState(VpnConnectionState.connected);

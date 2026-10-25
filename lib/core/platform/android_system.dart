@@ -29,6 +29,13 @@ class AndroidSystem {
   /// Whether this phone has little memory and should use lighter animations.
   static Future<bool> isLowEndDevice() => _call('isLowEndDevice');
 
+  /// Completes once the OpenVPN plugin is attached. It loads its native
+  /// libraries on a background thread after launch, so its channels do not
+  /// exist for the first moments of the app's life.
+  static Future<void> waitForVpnEngine() =>
+      _call('waitForVpnEngine')
+          .timeout(const Duration(seconds: 20), onTimeout: () => false);
+
   static Future<bool> _call(String method) async {
     if (kIsWeb || !Platform.isAndroid) return false;
     try {
