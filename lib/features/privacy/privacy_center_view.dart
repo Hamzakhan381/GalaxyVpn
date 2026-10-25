@@ -52,7 +52,7 @@ class PrivacyCenterView extends StatelessWidget {
                 delayMs: 60,
                 child: _buildSection(
                   title: '1. Android VpnService & Routing',
-                  content: 'We invoke the standard Android VpnService API to create a local virtual network interface (TUN). All outgoing packets are encapsulated into OpenVPN protocol datagrams and forwarded directly to the chosen public relay server.',
+                  content: 'We invoke the standard Android VpnService API to create a local virtual network interface (TUN). All outgoing packets are encrypted inside an SSTP (TLS) or OpenVPN tunnel and forwarded directly to the chosen public relay server.',
                 ),
               ),
               const SizedBox(height: 16),
@@ -76,7 +76,7 @@ class PrivacyCenterView extends StatelessWidget {
                 delayMs: 240,
                 child: _buildSection(
                   title: '4. Public Relay Infrastructure',
-                  content: 'Galaxy VPN discovers community relays provided by university networks and research volunteers. While traffic between your device and the relay is encrypted, relay operators retain standard server connection logs according to their regional laws.',
+                  content: 'Galaxy VPN connects to free public relays from VPN Gate (university and volunteer networks) and VPNBook. Traffic between your device and the relay is encrypted, but each relay operator can see the traffic it forwards and keeps standard connection logs under its regional laws. With automatic IP rotation on, several relays carry your traffic over one session.',
                 ),
               ),
               const SizedBox(height: 16),

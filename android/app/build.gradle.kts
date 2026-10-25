@@ -1,8 +1,18 @@
+import java.io.FileInputStream
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
+
+// Upload-key credentials for store builds; see README "Release build".
+val keystoreProperties = Properties().apply {
+    val file = rootProject.file("key.properties")
+    if (file.exists()) FileInputStream(file).use { load(it) }
+}
+val hasReleaseKey = keystoreProperties.getProperty("storeFile") != null
 
 android {
     namespace = "com.shieldroute.vpn.shieldroute_vpn"
@@ -15,7 +25,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.shieldroute.vpn.shieldroute_vpn"
+        applicationId = "com.galaxyvpn.app"
         minSdk = 24
         targetSdk = 36
         versionCode = flutter.versionCode
@@ -40,9 +50,22 @@ android {
         }
     }
 
+    signingConfigs {
+        if (hasReleaseKey) {
+            create("release") {
+                keyAlias = keystoreProperties.getProperty("keyAlias")
+                keyPassword = keystoreProperties.getProperty("keyPassword")
+                storeFile = file(keystoreProperties.getProperty("storeFile"))
+                storePassword = keystoreProperties.getProperty("storePassword")
+            }
+        }
+    }
+
     buildTypes {
         release {
-            signingConfig = signingConfigs.getByName("debug")
+            // Without android/key.properties (local testing) release builds
+            // fall back to the debug key, which app stores reject.
+            signingConfig = signingConfigs.getByName(if (hasReleaseKey) "release" else "debug")
         }
     }
 }

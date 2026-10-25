@@ -156,9 +156,57 @@ class VpnController extends ChangeNotifier {
       notifyListeners();
     });
 
-    _metricsSub = _getVpnMetricsStreamUseCase().listen((_) {
+    _metricsSub = _getVpnMetricsStreamUseCase().listen((metrics) {
+      _sampleThroughput(metrics);
       notifyListeners();
     });
+  }
+
+  // Live throughput, derived from successive traffic counters.
+  int _lastByteIn = 0;
+  int _lastByteOut = 0;
+  DateTime? _lastSampleAt;
+  double _downloadBitsPerSecond = 0;
+  double _uploadBitsPerSecond = 0;
+
+  double get downloadBitsPerSecond => _downloadBitsPerSecond;
+  double get uploadBitsPerSecond => _uploadBitsPerSecond;
+
+  void _sampleThroughput(VpnLiveMetrics metrics) {
+    final now = DateTime.now();
+    final last = _lastSampleAt;
+    final countersReset =
+        metrics.byteIn < _lastByteIn || metrics.byteOut < _lastByteOut;
+    if (last != null && !countersReset) {
+      final seconds = now.difference(last).inMilliseconds / 1000;
+      // Wait for a long enough window to give a stable reading.
+      if (seconds < 0.5) return;
+      _downloadBitsPerSecond = _smoothRate(
+        _downloadBitsPerSecond,
+        (metrics.byteIn - _lastByteIn) * 8 / seconds,
+      );
+      _uploadBitsPerSecond = _smoothRate(
+        _uploadBitsPerSecond,
+        (metrics.byteOut - _lastByteOut) * 8 / seconds,
+      );
+    } else if (countersReset) {
+      _resetThroughput();
+    }
+    _lastByteIn = metrics.byteIn;
+    _lastByteOut = metrics.byteOut;
+    _lastSampleAt = now;
+  }
+
+  /// Blends each reading with the previous one so the readout does not jitter.
+  static double _smoothRate(double previous, double sample) =>
+      previous == 0 ? sample : previous * 0.6 + sample * 0.4;
+
+  void _resetThroughput() {
+    _lastByteIn = 0;
+    _lastByteOut = 0;
+    _lastSampleAt = null;
+    _downloadBitsPerSecond = 0;
+    _uploadBitsPerSecond = 0;
   }
 
   // Smart failover: after a failed attempt, try the next best relays.
@@ -167,6 +215,21 @@ class VpnController extends ChangeNotifier {
   final Set<String> _failoverTried = {};
 
   bool _failoverPending = false;
+
+  /// Set while the user is disconnecting, so the engine's report of that is
+  /// never mistaken for a dropped tunnel.
+  bool _userStopped = false;
+
+  /// The tunnel was up and then failed (the relay went away, not the user):
+  /// fail over to the next relay instead of leaving the user unprotected.
+  /// Volunteer relays often disappear mid-session, so the dropped relay is
+  /// skipped rather than retried.
+  void _recoverFromDrop() {
+    _failoverActive = true;
+    _failoverTried
+      ..clear()
+      ..add(vpnService.currentServer?.id ?? _selectedServer?.id ?? '');
+  }
 
   void _maybeFailover() {
     if (_failoverPending) return;
@@ -208,9 +271,13 @@ class VpnController extends ChangeNotifier {
     if (state == VpnConnectionState.connected) {
       _failoverActive = false;
     } else if (state == VpnConnectionState.error) {
+      if (_sessionStartTime != null && !_failoverActive && !_userStopped) {
+        _recoverFromDrop();
+      }
       _maybeFailover();
     }
     _updateRotation(state);
+    if (state != VpnConnectionState.connected) _resetThroughput();
     if (state == VpnConnectionState.connected && _sessionStartTime == null) {
       _sessionStartTime = DateTime.now();
       _activeSessionId = const Uuid().v4();
@@ -488,6 +555,7 @@ class VpnController extends ChangeNotifier {
     }
 
     unawaited(_saveSelectedServer(_selectedServer!));
+    _userStopped = false;
     _failoverActive = true;
     _failoverTried
       ..clear()
@@ -511,6 +579,7 @@ class VpnController extends ChangeNotifier {
   }
 
   Future<void> disconnect() async {
+    _userStopped = true;
     _failoverActive = false;
     _rotationInProgress = false;
     _cancelRotation();

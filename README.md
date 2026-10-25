@@ -106,6 +106,25 @@ The Android app uses relays from two free sources: VPN Gate (university and volu
    flutter build apk --debug
    ```
 
+### Release build
+The app ID is `com.galaxyvpn.app`. Store builds must be signed with your own upload key; without one, release builds fall back to the debug key, which app stores reject.
+
+1. Create an upload keystore once (keep it and its passwords safe; losing it means you can no longer update the app):
+   ```bash
+   keytool -genkey -v -keystore android/app/upload-keystore.jks -keyalg RSA -keysize 2048 -validity 10000 -alias upload
+   ```
+2. Create `android/key.properties` (ignored by git):
+   ```properties
+   storePassword=<keystore password>
+   keyPassword=<key password>
+   keyAlias=upload
+   storeFile=upload-keystore.jks
+   ```
+3. Build the Play Store bundle (or `flutter build apk --release` for a sideloadable APK):
+   ```bash
+   flutter build appbundle --release
+   ```
+
 ---
 
 ## 7. Documentation Index

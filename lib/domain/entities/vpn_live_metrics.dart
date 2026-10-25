@@ -1,5 +1,13 @@
 /// Dynamic live metrics emitted during an active VPN session
 class VpnLiveMetrics {
+  /// Human-readable bit rate, e.g. "4.2 Mbps" or "860 Kbps".
+  static String formatBitRate(double bitsPerSecond) {
+    if (bitsPerSecond >= 1000000) {
+      return '${(bitsPerSecond / 1000000).toStringAsFixed(1)} Mbps';
+    }
+    return '${(bitsPerSecond / 1000).round()} Kbps';
+  }
+
   final int byteIn;
   final int byteOut;
   final String? duration;

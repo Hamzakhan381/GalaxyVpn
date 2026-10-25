@@ -1,8 +1,11 @@
 import 'dart:async';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
 import 'app/app.dart';
 import 'core/storage/preferences_service.dart';
 import 'data/datasources/platform/unified_vpn_platform_data_source.dart';
@@ -20,6 +23,25 @@ Future<void> main() async {
   // Prevent GoogleFonts from attempting network downloads during startup or offline
   GoogleFonts.config.allowRuntimeFetching = false;
 
+  // Last-resort handlers: an unexpected error is logged instead of taking the
+  // app (and the user's view of their connection) down.
+  PlatformDispatcher.instance.onError = (error, stack) {
+    debugPrint('GalaxyVpnApp: uncaught error: $error\n$stack');
+    return true;
+  };
+  if (kReleaseMode) {
+    ErrorWidget.builder = (details) => const Center(
+      child: Padding(
+        padding: EdgeInsets.all(24),
+        child: Text(
+          'Something went wrong showing this part of the screen.',
+          textAlign: TextAlign.center,
+          style: TextStyle(color: Color(0xFFB3B3B3), fontSize: 13),
+        ),
+      ),
+    );
+  }
+
   debugPrint('GalaxyVpnApp: main() initializing...');
 
   SharedPreferences sharedPreferences;
@@ -27,7 +49,9 @@ Future<void> main() async {
     sharedPreferences = await SharedPreferences.getInstance().timeout(
       const Duration(seconds: 4),
       onTimeout: () {
-        debugPrint('GalaxyVpnApp: SharedPreferences timeout - continuing with fallback');
+        debugPrint(
+          'GalaxyVpnApp: SharedPreferences timeout - continuing with fallback',
+        );
         return SharedPreferences.getInstance();
       },
     );
@@ -40,9 +64,11 @@ Future<void> main() async {
 
   // Instantiate Clean Architecture platform and domain services
   final vpnService = UnifiedVpnPlatformDataSource(prefs: prefsService);
-  unawaited(vpnService.initialize().catchError((e) {
-    debugPrint('UnifiedVpnPlatformDataSource background init error: $e');
-  }));
+  unawaited(
+    vpnService.initialize().catchError((e) {
+      debugPrint('UnifiedVpnPlatformDataSource background init error: $e');
+    }),
+  );
 
   final serverRepository = ServerRepositoryImpl(preferencesRepo: prefsService);
   final authRepository = AuthRepositoryImpl(prefsService);

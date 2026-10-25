@@ -158,4 +158,24 @@ void main() {
     expect(sstp.connectCalls, 0);
     expect(openVpn.connectCalls, 1);
   });
+
+  test('follows an SSTP tunnel that Always-on VPN started by itself', () async {
+    final sstp = _FakeSstp();
+    final vpn = build(sstp, _FakeOpenVpn());
+    await vpn.initialize();
+    final seen = <VpnConnectionState>[];
+    vpn.stateStream.listen(seen.add);
+
+    // The system starts the tunnel; the app never called connect(). Native
+    // state events arrive seconds apart, not in one burst.
+    sstp._states.add(VpnConnectionState.connecting);
+    await settle();
+    expect(vpn.currentState, VpnConnectionState.connecting);
+    sstp._states.add(VpnConnectionState.connected);
+    await settle();
+
+    expect(vpn.currentState, VpnConnectionState.connected);
+    expect(seen, contains(VpnConnectionState.connected));
+    expect(sstp.connectCalls, 0);
+  });
 }

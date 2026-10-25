@@ -5,15 +5,15 @@
 Galaxy VPN is an academic research prototype engineered for a university Mobile App Development curriculum. Unlike commercial VPNs that make marketing claims such as "100% untraceable" or "military-grade absolute anonymity," Galaxy VPN adheres to strict academic honesty:
 - No software provides absolute invisibility across all network adversary models.
 - VPN encryption protects network data between your device and the chosen relay gateway.
-- Public relay operators may maintain standard server connection timestamps and access logs in according with their respective regional regulations.
+- Public relay operators (VPN Gate's university and volunteer hosts, and VPNBook) can see the traffic they forward and may keep connection timestamps and access logs under their regional regulations. With automatic IP rotation on, several relays carry a user's traffic over one session.
 
 ---
 
 ## 2. Android VpnService Disclosure
 
 Android requires explicit user disclosure prior to invoking `android.net.VpnService`:
-- **Core Purpose:** Establishing an encrypted virtual network interface (TUN) to route device traffic through an OpenVPN endpoint.
-- **Traffic Scope:** All outbound IP traffic is encapsulated into OpenVPN protocol datagrams directed toward the selected relay server.
+- **Core Purpose:** Establishing an encrypted virtual network interface (TUN) to route device traffic through an SSTP (TLS) or OpenVPN endpoint.
+- **Traffic Scope:** All outbound IPv4 traffic is encrypted and sent to the selected relay server; IPv6 is blocked while connected so it cannot bypass the tunnel.
 - **User Consent:** The user is presented with the explicit in-app disclosure on screen `S03 - VPN Permission Disclosure` containing an unselected consent checkbox (`[ ] I understand how VPN access is used.`). System permission is only requested after active user agreement.
 
 ---
@@ -27,6 +27,7 @@ Android requires explicit user disclosure prior to invoking `android.net.VpnServ
 | **Credential Storage** | **Secure / Salted** | Local authentication hashes are salted with SHA-256. |
 | **Analytics & Trackers** | **Zero Third Parties** | Zero advertisement SDKs, analytics SDKs, or trackers. |
 | **Local Metrics** | **Local Only** | Session durations and bandwidth counts reside in `SharedPreferences`. |
+| **Device Backups** | **Excluded** | Android cloud and device-transfer backups are disabled, so local data never leaves the device. |
 
 ---
 

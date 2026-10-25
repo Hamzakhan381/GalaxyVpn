@@ -93,6 +93,7 @@ lib/
 │
 ├── core/
 │   ├── constants/app_constants.dart            # Storage keys, disclosure copy, URLs
+│   ├── platform/android_system.dart            # Android VPN settings & notification permission
 │   └── storage/preferences_service.dart        # Clean preferences wrapper
 │
 ├── domain/                                     # Pure business logic (Zero external dependencies)

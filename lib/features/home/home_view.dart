@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import '../../app/theme/app_colors.dart';
 import '../../app/theme/app_text_styles.dart';
 import '../../core/constants/app_constants.dart';
+import '../../core/platform/android_system.dart';
 import '../../domain/entities/vpn_connection_state.dart';
 import '../../domain/entities/vpn_live_metrics.dart';
 import '../../presentation/controllers/vpn_controller.dart';
@@ -171,6 +172,9 @@ class _HomeViewState extends State<HomeView> with TickerProviderStateMixin {
                               if (isConnected || isConnecting) {
                                 vpnRepo.disconnect();
                               } else if (!isDisconnecting) {
+                                // So the connection notification (with its
+                                // Disconnect action) can show on Android 13+.
+                                AndroidSystem.requestNotificationPermission();
                                 vpnRepo.connect();
                               }
                             },
@@ -282,6 +286,10 @@ class _HomeViewState extends State<HomeView> with TickerProviderStateMixin {
                                   metrics: metrics,
                                   server: selectedServer,
                                   onSwitchServer: widget.onNavigateToServers,
+                                  downloadBitsPerSecond:
+                                      vpnRepo.downloadBitsPerSecond,
+                                  uploadBitsPerSecond:
+                                      vpnRepo.uploadBitsPerSecond,
                                 )
                               : !isConnecting
                               ? _buildNetworkInfoCard(selectedServer)
@@ -1124,12 +1132,16 @@ class _ConnectedMetricsPanel extends StatefulWidget {
   final VpnLiveMetrics metrics;
   final dynamic server;
   final VoidCallback onSwitchServer;
+  final double downloadBitsPerSecond;
+  final double uploadBitsPerSecond;
 
   const _ConnectedMetricsPanel({
     super.key,
     required this.metrics,
     required this.server,
     required this.onSwitchServer,
+    this.downloadBitsPerSecond = 0,
+    this.uploadBitsPerSecond = 0,
   });
 
   @override
@@ -1216,6 +1228,8 @@ class _ConnectedMetricsPanelState extends State<_ConnectedMetricsPanel>
                     icon: Icons.arrow_downward_rounded,
                     label: 'Downloaded',
                     value: _formatBytes(m.byteIn),
+                    detail:
+                        '${VpnLiveMetrics.formatBitRate(widget.downloadBitsPerSecond)} now',
                     accent: AppColors.secondaryText,
                   ),
                 ),
@@ -1226,6 +1240,8 @@ class _ConnectedMetricsPanelState extends State<_ConnectedMetricsPanel>
                     icon: Icons.arrow_upward_rounded,
                     label: 'Uploaded',
                     value: _formatBytes(m.byteOut),
+                    detail:
+                        '${VpnLiveMetrics.formatBitRate(widget.uploadBitsPerSecond)} now',
                     accent: AppColors.secondaryText,
                   ),
                 ),
@@ -1347,11 +1363,15 @@ class _CyberMetricTile extends StatelessWidget {
   final String value;
   final Color accent;
 
+  /// Secondary line under the value, e.g. the current transfer rate.
+  final String? detail;
+
   const _CyberMetricTile({
     required this.icon,
     required this.label,
     required this.value,
     required this.accent,
+    this.detail,
   });
 
   @override
@@ -1428,6 +1448,19 @@ class _CyberMetricTile extends StatelessWidget {
               ),
             ),
           ),
+          if (detail != null) ...[
+            const SizedBox(height: 2),
+            Text(
+              detail!,
+              style: AppTextStyles.labelSm.copyWith(
+                color: AppColors.mutedText,
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                fontFeatures: const [FontFeature.tabularFigures()],
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
         ],
       ),
     );

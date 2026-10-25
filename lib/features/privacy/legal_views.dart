@@ -183,7 +183,7 @@ class PrivacyPolicyView extends StatelessWidget {
                 delay: const Duration(milliseconds: 160),
                 child: _buildParagraph(
                   'Network Routing',
-                  'Upon initiating a VPN connection, your IP packets are encapsulated into OpenVPN format and relayed directly through the target gateway. Galaxy VPN servers do not intermediate or decrypt this connection.',
+                  'Upon initiating a VPN connection, your IP packets are encrypted inside an SSTP (TLS) or OpenVPN tunnel and relayed directly through the target gateway. Galaxy VPN servers do not intermediate or decrypt this connection.',
                 ),
               ),
               AnimatedFadeSlide(

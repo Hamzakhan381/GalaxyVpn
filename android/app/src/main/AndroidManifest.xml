@@ -11,14 +11,19 @@
         android:label="Galaxy VPN"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
+        android:allowBackup="false"
+        android:fullBackupContent="false"
+        android:dataExtractionRules="@xml/data_extraction_rules"
         android:extractNativeLibs="true">
+        <!-- Listed first, with a higher priority, so Android's Always-on VPN
+             starts this service (which reconnects the last SSTP relay) rather
+             than the OpenVPN plugin's. -->
         <service
-            android:name="de.blinkt.openvpn.core.OpenVPNService"
+            android:name=".GalaxyVpnService"
             android:foregroundServiceType="specialUse"
-            android:exported="true"
-            android:permission="android.permission.BIND_VPN_SERVICE"
-            tools:replace="android:exported,android:foregroundServiceType">
-            <intent-filter>
+            android:exported="false"
+            android:permission="android.permission.BIND_VPN_SERVICE">
+            <intent-filter android:priority="10">
                 <action android:name="android.net.VpnService" />
             </intent-filter>
             <property
@@ -26,10 +31,11 @@
                 android:value="vpn" />
         </service>
         <service
-            android:name=".GalaxyVpnService"
+            android:name="de.blinkt.openvpn.core.OpenVPNService"
             android:foregroundServiceType="specialUse"
-            android:exported="false"
-            android:permission="android.permission.BIND_VPN_SERVICE">
+            android:exported="true"
+            android:permission="android.permission.BIND_VPN_SERVICE"
+            tools:replace="android:exported,android:foregroundServiceType">
             <intent-filter>
                 <action android:name="android.net.VpnService" />
             </intent-filter>

@@ -170,7 +170,7 @@ class _WelcomeViewState extends State<WelcomeView>
                                   Expanded(
                                     child: _buildPill(
                                       Icons.lock_outline,
-                                      'OpenVPN Encrypted',
+                                      'TLS Encrypted',
                                     ),
                                   ),
                                   _buildDivider(),

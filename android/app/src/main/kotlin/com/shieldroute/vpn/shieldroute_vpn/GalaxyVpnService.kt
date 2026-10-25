@@ -32,6 +32,9 @@ class GalaxyVpnService : VpnService() {
         private const val NOTIFICATION_CHANNEL_ID = "galaxy_vpn_tunnel"
         private const val NOTIFICATION_ID = 1001
 
+        /** Last relay connected over SSTP, reused when Android starts Always-on VPN. */
+        private const val LAST_RELAY_PREFS = "galaxy_vpn_last_relay"
+
         const val ACTION_CONNECT = "com.galaxyvpn.action.CONNECT"
         const val ACTION_DISCONNECT = "com.galaxyvpn.action.DISCONNECT"
         const val EXTRA_HOSTNAME = "hostname"
@@ -70,20 +73,68 @@ class GalaxyVpnService : VpnService() {
             ACTION_CONNECT -> {
                 serverName = intent.getStringExtra(EXTRA_SERVER_NAME) ?: "VPN relay"
                 startForegroundCompat(buildNotification("Connecting to $serverName…"))
-                startTunnel(
-                    SstpTunnel.Config(
-                        hostname = intent.getStringExtra(EXTRA_HOSTNAME) ?: "",
-                        address = intent.getStringExtra(EXTRA_ADDRESS) ?: "",
-                        port = intent.getIntExtra(EXTRA_PORT, 443),
-                        username = intent.getStringExtra(EXTRA_USERNAME) ?: "vpn",
-                        password = intent.getStringExtra(EXTRA_PASSWORD) ?: "vpn",
-                        sessionName = serverName,
-                    ),
+                val config = SstpTunnel.Config(
+                    hostname = intent.getStringExtra(EXTRA_HOSTNAME) ?: "",
+                    address = intent.getStringExtra(EXTRA_ADDRESS) ?: "",
+                    port = intent.getIntExtra(EXTRA_PORT, 443),
+                    username = intent.getStringExtra(EXTRA_USERNAME) ?: "vpn",
+                    password = intent.getStringExtra(EXTRA_PASSWORD) ?: "vpn",
+                    sessionName = serverName,
                 )
+                saveLastRelay(config)
+                startTunnel(config)
             }
             ACTION_DISCONNECT -> stopTunnel()
+            // Android starts the service itself for Always-on VPN: at boot, and
+            // when the tunnel has gone down.
+            null, VpnService.SERVICE_INTERFACE -> startAlwaysOn()
         }
         return START_NOT_STICKY
+    }
+
+    /**
+     * Reconnects to the last SSTP relay for Always-on VPN. Without one (the app
+     * was never connected over SSTP) there is nothing to start, so stop.
+     */
+    private fun startAlwaysOn() {
+        if (tunnel != null) return
+        val config = loadLastRelay()
+        if (config == null) {
+            Log.w(TAG, "Always-on start with no saved relay; connect once in the app.")
+            startForegroundCompat(buildNotification("Open Galaxy VPN to choose a server"))
+            stopForeground(STOP_FOREGROUND_REMOVE)
+            stopSelf()
+            return
+        }
+        serverName = config.sessionName
+        startForegroundCompat(buildNotification("Connecting to $serverName…"))
+        startTunnel(config)
+    }
+
+    private fun saveLastRelay(config: SstpTunnel.Config) {
+        if (config.hostname.isEmpty() || config.address.isEmpty()) return
+        getSharedPreferences(LAST_RELAY_PREFS, MODE_PRIVATE).edit()
+            .putString("hostname", config.hostname)
+            .putString("address", config.address)
+            .putInt("port", config.port)
+            .putString("username", config.username)
+            .putString("password", config.password)
+            .putString("serverName", config.sessionName)
+            .apply()
+    }
+
+    private fun loadLastRelay(): SstpTunnel.Config? {
+        val prefs = getSharedPreferences(LAST_RELAY_PREFS, MODE_PRIVATE)
+        val hostname = prefs.getString("hostname", null) ?: return null
+        val address = prefs.getString("address", null) ?: return null
+        return SstpTunnel.Config(
+            hostname = hostname,
+            address = address,
+            port = prefs.getInt("port", 443),
+            username = prefs.getString("username", null) ?: "vpn",
+            password = prefs.getString("password", null) ?: "vpn",
+            sessionName = prefs.getString("serverName", null) ?: "VPN relay",
+        )
     }
 
     private fun startTunnel(config: SstpTunnel.Config) {

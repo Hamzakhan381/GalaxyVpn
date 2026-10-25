@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../app/theme/app_colors.dart';
 import '../../app/theme/app_text_styles.dart';
+import '../../core/platform/android_system.dart';
 import '../../core/storage/preferences_service.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../../presentation/controllers/vpn_controller.dart';
@@ -231,6 +232,14 @@ class _SettingsViewState extends State<SettingsView> {
                           ),
                         ),
                       ],
+                      SettingsRow(
+                        icon: Icons.gpp_good_outlined,
+                        title: 'Kill Switch',
+                        subtitle:
+                            'Block internet whenever the VPN is off, using '
+                            "Android's Always-on VPN",
+                        onTap: () => _showKillSwitchDialog(context),
+                      ),
                     ]),
                   ],
                 ),
@@ -536,6 +545,66 @@ class _SettingsViewState extends State<SettingsView> {
         borderRadius: BorderRadius.circular(18),
         clipBehavior: Clip.antiAlias,
         child: Column(children: children),
+      ),
+    );
+  }
+
+  /// Android only lets the system enforce a kill switch, so this explains the
+  /// two toggles and opens the screen that has them.
+  void _showKillSwitchDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.elevatedSurface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: const BorderSide(color: AppColors.borderDivider),
+        ),
+        title: Text(
+          'Kill Switch',
+          style: AppTextStyles.headlineSm.copyWith(
+            color: AppColors.primaryText,
+          ),
+        ),
+        content: Text(
+          'Android enforces the kill switch itself. On the next screen, tap '
+          'the gear next to Galaxy VPN and turn on:\n\n'
+          '• Always-on VPN\n'
+          '• Block connections without VPN\n\n'
+          'Your internet is then blocked whenever the VPN is down, and Galaxy '
+          'VPN reconnects automatically to your last VPN Gate server. '
+          'Turn Always-on off there to stop it.',
+          style: AppTextStyles.bodyMd.copyWith(color: AppColors.secondaryText),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text(
+              'Cancel',
+              style: TextStyle(color: AppColors.secondaryText),
+            ),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.of(ctx).pop();
+              final opened = await AndroidSystem.openVpnSettings();
+              if (!opened && context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text(
+                      'Open Settings › Network › VPN on your phone to turn '
+                      'on Always-on VPN.',
+                    ),
+                  ),
+                );
+              }
+            },
+            child: const Text(
+              'Open VPN settings',
+              style: TextStyle(color: AppColors.primaryText),
+            ),
+          ),
+        ],
       ),
     );
   }

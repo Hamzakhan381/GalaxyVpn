@@ -1,8 +1,11 @@
 package com.shieldroute.vpn.shieldroute_vpn
 
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.VpnService
 import android.os.Build
+import android.provider.Settings
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.EventChannel
@@ -14,9 +17,11 @@ class MainActivity : FlutterActivity() {
         private const val METHOD_CHANNEL = "com.galaxyvpn/native_engine"
         private const val EVENT_CHANNEL = "com.galaxyvpn/events"
         private const val VPN_REQUEST_CODE = 1024
+        private const val NOTIFICATION_REQUEST_CODE = 1025
     }
 
     private var pendingPermissionResult: MethodChannel.Result? = null
+    private var pendingNotificationResult: MethodChannel.Result? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -77,6 +82,34 @@ class MainActivity : FlutterActivity() {
                         result.success(true)
                     }
                     "getState" -> result.success(GalaxyVpnService.currentState)
+                    // Android's VPN screen, where Always-on VPN and "Block
+                    // connections without VPN" (the system kill switch) live.
+                    "openVpnSettings" -> {
+                        val opened = runCatching {
+                            startActivity(Intent(Settings.ACTION_VPN_SETTINGS))
+                        }.isSuccess || runCatching {
+                            startActivity(Intent(Settings.ACTION_WIRELESS_SETTINGS))
+                        }.isSuccess
+                        result.success(opened)
+                    }
+                    // Android 13+ hides the connection notification (and its
+                    // Disconnect action) until this is granted.
+                    "requestNotificationPermission" -> {
+                        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+                            checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) ==
+                            PackageManager.PERMISSION_GRANTED
+                        ) {
+                            result.success(true)
+                        } else if (pendingNotificationResult != null) {
+                            result.success(false)
+                        } else {
+                            pendingNotificationResult = result
+                            requestPermissions(
+                                arrayOf(Manifest.permission.POST_NOTIFICATIONS),
+                                NOTIFICATION_REQUEST_CODE,
+                            )
+                        }
+                    }
                     else -> result.notImplemented()
                 }
             }
@@ -91,5 +124,19 @@ class MainActivity : FlutterActivity() {
         // OpenVPN permission results (request code 24) are handled by the
         // axevpn_flutter plugin's own ActivityResultListener.
         super.onActivityResult(requestCode, resultCode, data)
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<String>,
+        grantResults: IntArray,
+    ) {
+        if (requestCode == NOTIFICATION_REQUEST_CODE) {
+            pendingNotificationResult?.success(
+                grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED,
+            )
+            pendingNotificationResult = null
+        }
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
     }
 }

@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../app/theme/app_colors.dart';
 import '../../app/theme/app_text_styles.dart';
+import '../../core/platform/android_system.dart';
 import '../../core/storage/preferences_service.dart';
 import '../../presentation/controllers/vpn_controller.dart';
 import '../common/cyber_background.dart';
@@ -36,6 +37,7 @@ class _VpnDisclosureViewState extends State<VpnDisclosureView> {
 
       // Trigger Android VpnService permission flow
       await vpnRepo.vpnService.requestVpnPermission();
+      await AndroidSystem.requestNotificationPermission();
 
       if (!mounted) return;
 

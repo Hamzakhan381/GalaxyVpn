@@ -29,6 +29,7 @@ class UnifiedVpnPlatformDataSource implements VpnPlatformDataSource {
   VpnPlatformDataSource? _activeSource;
   StreamSubscription? _activeStateSub;
   StreamSubscription? _activeMetricsSub;
+  StreamSubscription? _nativeAutoStartSub;
 
   VpnConnectionState _currentState = VpnConnectionState.disconnected;
   VpnLiveMetrics _currentMetrics = const VpnLiveMetrics();
@@ -76,6 +77,19 @@ class UnifiedVpnPlatformDataSource implements VpnPlatformDataSource {
       _openVpnSource.initialize(),
       _nativeVpnSource.initialize(),
     ]);
+    // Android's Always-on VPN can start the SSTP tunnel without the app
+    // asking; follow it so the UI shows it and can disconnect it.
+    _nativeAutoStartSub ??= _nativeVpnSource.stateStream.listen((state) {
+      if (_activeSource != null) return;
+      if (state != VpnConnectionState.connecting &&
+          state != VpnConnectionState.connected) {
+        return;
+      }
+      _bindSource(_nativeVpnSource);
+      _currentState = state;
+      _stateController.add(state);
+    });
+
     // Adopt a tunnel that is still up from a previous app session so the UI
     // reflects it and the user can disconnect it.
     for (final source in [_nativeVpnSource, _openVpnSource]) {
@@ -192,6 +206,7 @@ class UnifiedVpnPlatformDataSource implements VpnPlatformDataSource {
 
   @override
   void dispose() {
+    _nativeAutoStartSub?.cancel();
     _activeStateSub?.cancel();
     _activeMetricsSub?.cancel();
     _openVpnSource.dispose();

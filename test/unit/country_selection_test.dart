@@ -81,6 +81,23 @@ class _FailingVpn implements VpnPlatformDataSource {
   }
 }
 
+/// Connects fine; [drop] then fails the live tunnel like a vanished relay.
+class _DroppableVpn extends _FailingVpn {
+  @override
+  Future<void> connect(VpnServer server) async {
+    attempts.add(server);
+    _server = server;
+    _set(VpnConnectionState.connecting);
+    await Future<void>.delayed(const Duration(milliseconds: 10));
+    _set(VpnConnectionState.connected);
+  }
+
+  void drop() => _set(VpnConnectionState.error);
+
+  void traffic(int byteIn, int byteOut) =>
+      _metrics.add(VpnLiveMetrics(byteIn: byteIn, byteOut: byteOut));
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -141,6 +158,61 @@ void main() {
         controller.allServers.length,
         greaterThan(controller.countryServers.length),
       );
+    });
+
+    test('a relay dropping mid-session reconnects to another one', () async {
+      final vpn = _DroppableVpn();
+      final controller = VpnController(
+        vpnService: vpn,
+        serverService: repository,
+        prefs: prefs,
+      );
+      addTearDown(controller.dispose);
+      await controller.loadServers();
+      await controller.connect();
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      expect(controller.connectionState, VpnConnectionState.connected);
+      final dropped = vpn.currentServer!;
+
+      vpn.drop();
+      await Future<void>.delayed(const Duration(milliseconds: 1000));
+
+      expect(controller.connectionState, VpnConnectionState.connected);
+      expect(vpn.attempts.length, 2);
+      expect(vpn.currentServer!.id, isNot(dropped.id));
+      expect(controller.sessions.first.status, 'failed');
+    });
+
+    test('derives live download and upload speed from traffic', () async {
+      final vpn = _DroppableVpn();
+      final controller = VpnController(
+        vpnService: vpn,
+        serverService: repository,
+        prefs: prefs,
+      );
+      addTearDown(controller.dispose);
+      await controller.loadServers();
+      await controller.connect();
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+
+      vpn.traffic(0, 0);
+      await Future<void>.delayed(const Duration(milliseconds: 600));
+      vpn.traffic(125000, 12500);
+      await Future<void>.delayed(Duration.zero);
+
+      // 1 Mb over ~0.6 s, 0.1 Mb up.
+      expect(controller.downloadBitsPerSecond, inInclusiveRange(1.2e6, 1.8e6));
+      expect(controller.uploadBitsPerSecond, inInclusiveRange(1.2e5, 1.8e5));
+
+      await controller.disconnect();
+      await Future<void>.delayed(Duration.zero);
+      expect(controller.downloadBitsPerSecond, 0);
+    });
+
+    test('formats bit rates for display', () {
+      expect(VpnLiveMetrics.formatBitRate(0), '0 Kbps');
+      expect(VpnLiveMetrics.formatBitRate(860400), '860 Kbps');
+      expect(VpnLiveMetrics.formatBitRate(4230000), '4.2 Mbps');
     });
 
     test('failover stays in the country the user chose', () async {
