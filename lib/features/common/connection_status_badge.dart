@@ -109,13 +109,13 @@ class _ConnectionStatusBadgeState extends State<ConnectionStatusBadge>
             color: badgeBackground,
             borderRadius: BorderRadius.circular(999),
             border: Border.all(color: borderColor, width: 1.0),
-            boxShadow: [
+            boxShadow: Motion.shadows(context, [
               BoxShadow(
                 color: Colors.black.withValues(alpha: 0.3),
                 blurRadius: 8,
                 offset: const Offset(0, 2),
               ),
-            ],
+            ]),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -127,7 +127,7 @@ class _ConnectionStatusBadgeState extends State<ConnectionStatusBadge>
                 decoration: BoxDecoration(
                   color: dotColor.withValues(alpha: pulseAlpha),
                   shape: BoxShape.circle,
-                  boxShadow: shouldPulse
+                  boxShadow: shouldPulse && !Motion.isLite(context)
                       ? [
                           BoxShadow(
                             color: dotColor.withValues(alpha: 0.4),

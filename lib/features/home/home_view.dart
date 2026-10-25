@@ -94,7 +94,6 @@ class _HomeViewState extends State<HomeView> with TickerProviderStateMixin {
             ? VpnConnectionState.connecting
             : rawState;
         final selectedServer = vpnRepo.selectedServer;
-        final metrics = vpnRepo.liveMetrics;
         final isConnected = state == VpnConnectionState.connected;
         final isConnecting =
             state == VpnConnectionState.connecting ||
@@ -138,7 +137,9 @@ class _HomeViewState extends State<HomeView> with TickerProviderStateMixin {
 
                       // ── Status badge ────────────────────────────────────────
                       AnimatedFadeSlide(
-                        child: ConnectionStatusBadge(state: state),
+                        child: RepaintBoundary(
+                          child: ConnectionStatusBadge(state: state),
+                        ),
                       ),
                       const SizedBox(height: 18),
 
@@ -162,22 +163,26 @@ class _HomeViewState extends State<HomeView> with TickerProviderStateMixin {
                         duration: Motion.slow,
                         offset: const Offset(0, 0.04),
                         beginScale: 0.82,
+                        // Own layer: the orb and its star field animate on
+                        // their own without repainting the rest of Home.
                         child: _OrbStage(
                           scroll: _scroll,
-                          child: ConnectionOrb(
-                            state: state,
-                            connectingCountry: selectedServer?.country,
-                            onTap: () {
-                              HapticFeedback.mediumImpact();
-                              if (isConnected || isConnecting) {
-                                vpnRepo.disconnect();
-                              } else if (!isDisconnecting) {
-                                // So the connection notification (with its
-                                // Disconnect action) can show on Android 13+.
-                                AndroidSystem.requestNotificationPermission();
-                                vpnRepo.connect();
-                              }
-                            },
+                          child: RepaintBoundary(
+                            child: ConnectionOrb(
+                              state: state,
+                              connectingCountry: selectedServer?.country,
+                              onTap: () {
+                                HapticFeedback.mediumImpact();
+                                if (isConnected || isConnecting) {
+                                  vpnRepo.disconnect();
+                                } else if (!isDisconnecting) {
+                                  // So the connection notification (with its
+                                  // Disconnect action) can show on Android 13+.
+                                  AndroidSystem.requestNotificationPermission();
+                                  vpnRepo.connect();
+                                }
+                              },
+                            ),
                           ),
                         ),
                       ),
@@ -196,29 +201,31 @@ class _HomeViewState extends State<HomeView> with TickerProviderStateMixin {
                             ? const SizedBox(width: double.infinity)
                             : AnimatedFadeSlide(
                                 delayMs: Motion.staggerStepMs * 3,
-                                child: FastestServerCard(
-                                  vpnRepo: vpnRepo,
-                                  onConnect: () =>
-                                      vpnRepo.connectToFastestServer(),
-                                  onServerDetails: () {
-                                    if (vpnRepo.fastestServer != null) {
-                                      showModalBottomSheet(
-                                        context: context,
-                                        isScrollControlled: true,
-                                        backgroundColor: Colors.transparent,
-                                        builder: (_) => ServerDetailsSheet(
-                                          server: vpnRepo.fastestServer!,
-                                          onConnect: () {
-                                            Navigator.of(context).pop();
-                                            vpnRepo.selectServer(
-                                              vpnRepo.fastestServer!,
-                                            );
-                                            vpnRepo.connect();
-                                          },
-                                        ),
-                                      );
-                                    }
-                                  },
+                                child: RepaintBoundary(
+                                  child: FastestServerCard(
+                                    vpnRepo: vpnRepo,
+                                    onConnect: () =>
+                                        vpnRepo.connectToFastestServer(),
+                                    onServerDetails: () {
+                                      if (vpnRepo.fastestServer != null) {
+                                        showModalBottomSheet(
+                                          context: context,
+                                          isScrollControlled: true,
+                                          backgroundColor: Colors.transparent,
+                                          builder: (_) => ServerDetailsSheet(
+                                            server: vpnRepo.fastestServer!,
+                                            onConnect: () {
+                                              Navigator.of(context).pop();
+                                              vpnRepo.selectServer(
+                                                vpnRepo.fastestServer!,
+                                              );
+                                              vpnRepo.connect();
+                                            },
+                                          ),
+                                        );
+                                      }
+                                    },
+                                  ),
                                 ),
                               ),
                       ),
@@ -283,13 +290,9 @@ class _HomeViewState extends State<HomeView> with TickerProviderStateMixin {
                           child: isConnected
                               ? _ConnectedMetricsPanel(
                                   key: const ValueKey('metrics_panel'),
-                                  metrics: metrics,
+                                  vpn: vpnRepo,
                                   server: selectedServer,
                                   onSwitchServer: widget.onNavigateToServers,
-                                  downloadBitsPerSecond:
-                                      vpnRepo.downloadBitsPerSecond,
-                                  uploadBitsPerSecond:
-                                      vpnRepo.uploadBitsPerSecond,
                                 )
                               : !isConnecting
                               ? _buildNetworkInfoCard(selectedServer)
@@ -421,7 +424,7 @@ class _HomeViewState extends State<HomeView> with TickerProviderStateMixin {
               : AppColors.borderDivider,
           width: 1.2,
         ),
-        boxShadow: [
+        boxShadow: Motion.shadows(context, [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.35),
             blurRadius: 16,
@@ -433,7 +436,7 @@ class _HomeViewState extends State<HomeView> with TickerProviderStateMixin {
               blurRadius: 16,
               spreadRadius: 1,
             ),
-        ],
+        ]),
       ),
       child: Material(
         color: Colors.transparent,
@@ -673,13 +676,13 @@ class _HomeViewState extends State<HomeView> with TickerProviderStateMixin {
         color: AppColors.cardBackground,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: AppColors.borderDivider, width: 1.0),
-        boxShadow: [
+        boxShadow: Motion.shadows(context, [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.35),
             blurRadius: 16,
             offset: const Offset(0, 4),
           ),
-        ],
+        ]),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1129,19 +1132,17 @@ class _AnimatedStatusText extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _ConnectedMetricsPanel extends StatefulWidget {
-  final VpnLiveMetrics metrics;
+  /// Read through [VpnController.metricsListenable]: the live readouts redraw
+  /// each second on their own, without rebuilding the rest of Home.
+  final VpnController vpn;
   final dynamic server;
   final VoidCallback onSwitchServer;
-  final double downloadBitsPerSecond;
-  final double uploadBitsPerSecond;
 
   const _ConnectedMetricsPanel({
     super.key,
-    required this.metrics,
+    required this.vpn,
     required this.server,
     required this.onSwitchServer,
-    this.downloadBitsPerSecond = 0,
-    this.uploadBitsPerSecond = 0,
   });
 
   @override
@@ -1185,7 +1186,7 @@ class _ConnectedMetricsPanelState extends State<_ConnectedMetricsPanel>
 
   @override
   Widget build(BuildContext context) {
-    final m = widget.metrics;
+    final vpn = widget.vpn;
     return FadeTransition(
       opacity: _fadeAnim,
       child: SlideTransition(
@@ -1193,70 +1194,26 @@ class _ConnectedMetricsPanelState extends State<_ConnectedMetricsPanel>
         child: Column(
           children: [
             // ── Metrics grid ──────────────────────────────────────────────
-            GridView.count(
-              crossAxisCount: 2,
-              crossAxisSpacing: 12,
-              mainAxisSpacing: 12,
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              childAspectRatio: 1.55,
-              children: [
-                AnimatedFadeSlide(
-                  delayMs: 0 * Motion.staggerStepMs,
-                  beginScale: 0.9,
-                  child: _CyberMetricTile(
-                    icon: Icons.timer_outlined,
-                    label: 'Duration',
-                    value: m.duration ?? '00:00',
-                    accent: AppColors.primaryText,
-                  ),
-                ),
-                AnimatedFadeSlide(
-                  delayMs: 1 * Motion.staggerStepMs,
-                  beginScale: 0.9,
-                  child: _CyberMetricTile(
-                    icon: Icons.speed_rounded,
-                    label: 'Latency',
-                    value: widget.server?.pingDisplay ?? '—',
-                    accent: AppColors.connectedStatus,
-                  ),
-                ),
-                AnimatedFadeSlide(
-                  delayMs: 2 * Motion.staggerStepMs,
-                  beginScale: 0.9,
-                  child: _CyberMetricTile(
-                    icon: Icons.arrow_downward_rounded,
-                    label: 'Downloaded',
-                    value: _formatBytes(m.byteIn),
-                    detail:
-                        '${VpnLiveMetrics.formatBitRate(widget.downloadBitsPerSecond)} now',
-                    accent: AppColors.secondaryText,
-                  ),
-                ),
-                AnimatedFadeSlide(
-                  delayMs: 3 * Motion.staggerStepMs,
-                  beginScale: 0.9,
-                  child: _CyberMetricTile(
-                    icon: Icons.arrow_upward_rounded,
-                    label: 'Uploaded',
-                    value: _formatBytes(m.byteOut),
-                    detail:
-                        '${VpnLiveMetrics.formatBitRate(widget.uploadBitsPerSecond)} now',
-                    accent: AppColors.secondaryText,
-                  ),
-                ),
-              ],
+            RepaintBoundary(
+              child: ListenableBuilder(
+                listenable: vpn.metricsListenable,
+                builder: (context, _) => _buildMetricsGrid(vpn),
+              ),
             ),
 
             const SizedBox(height: 16),
 
             // ── Exit node card ────────────────────────────────────────────
-            _buildExitNodeCard(),
+            ListenableBuilder(
+              listenable: vpn.metricsListenable,
+              builder: (context, _) =>
+                  _buildExitNodeCard(vpn.liveMetrics.publicIp),
+            ),
 
             const SizedBox(height: 12),
 
             // ── Automatic IP rotation ─────────────────────────────────────
-            const IpRotationCard(),
+            const RepaintBoundary(child: IpRotationCard()),
 
             const SizedBox(height: 20),
 
@@ -1276,22 +1233,79 @@ class _ConnectedMetricsPanelState extends State<_ConnectedMetricsPanel>
     );
   }
 
-  Widget _buildExitNodeCard() {
+  Widget _buildMetricsGrid(VpnController vpn) {
+    final m = vpn.liveMetrics;
+    return GridView.count(
+      crossAxisCount: 2,
+      crossAxisSpacing: 12,
+      mainAxisSpacing: 12,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      childAspectRatio: 1.55,
+      children: [
+        AnimatedFadeSlide(
+          delayMs: 0 * Motion.staggerStepMs,
+          beginScale: 0.9,
+          child: _CyberMetricTile(
+            icon: Icons.timer_outlined,
+            label: 'Duration',
+            value: m.duration ?? '00:00',
+            accent: AppColors.primaryText,
+          ),
+        ),
+        AnimatedFadeSlide(
+          delayMs: 1 * Motion.staggerStepMs,
+          beginScale: 0.9,
+          child: _CyberMetricTile(
+            icon: Icons.speed_rounded,
+            label: 'Latency',
+            value: widget.server?.pingDisplay ?? '—',
+            accent: AppColors.connectedStatus,
+          ),
+        ),
+        AnimatedFadeSlide(
+          delayMs: 2 * Motion.staggerStepMs,
+          beginScale: 0.9,
+          child: _CyberMetricTile(
+            icon: Icons.arrow_downward_rounded,
+            label: 'Downloaded',
+            value: _formatBytes(m.byteIn),
+            detail:
+                '${VpnLiveMetrics.formatBitRate(vpn.downloadBitsPerSecond)} now',
+            accent: AppColors.secondaryText,
+          ),
+        ),
+        AnimatedFadeSlide(
+          delayMs: 3 * Motion.staggerStepMs,
+          beginScale: 0.9,
+          child: _CyberMetricTile(
+            icon: Icons.arrow_upward_rounded,
+            label: 'Uploaded',
+            value: _formatBytes(m.byteOut),
+            detail:
+                '${VpnLiveMetrics.formatBitRate(vpn.uploadBitsPerSecond)} now',
+            accent: AppColors.secondaryText,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildExitNodeCard(String? ip) {
     final server = widget.server;
-    final ip = widget.metrics.publicIp;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
       decoration: BoxDecoration(
         color: AppColors.cardBackground,
         borderRadius: BorderRadius.circular(18),
         border: Border.all(color: AppColors.borderDivider, width: 1.0),
-        boxShadow: [
+        boxShadow: Motion.shadows(context, [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.3),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
-        ],
+        ]),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1389,7 +1403,7 @@ class _CyberMetricTile extends StatelessWidget {
               : AppColors.borderDivider,
           width: 1.0,
         ),
-        boxShadow: [
+        boxShadow: Motion.shadows(context, [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.3),
             blurRadius: 10,
@@ -1401,7 +1415,7 @@ class _CyberMetricTile extends StatelessWidget {
               blurRadius: 8,
               spreadRadius: 1,
             ),
-        ],
+        ]),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1509,14 +1523,14 @@ class _AppBarShield extends StatelessWidget {
               : AppColors.borderDivider,
           width: 1.0,
         ),
-        boxShadow: [
+        boxShadow: Motion.shadows(context, [
           if (isConnected)
             BoxShadow(
               color: accent.withValues(alpha: 0.35),
               blurRadius: 12,
               spreadRadius: 1,
             ),
-        ],
+        ]),
       ),
       child: Stack(
         alignment: Alignment.center,

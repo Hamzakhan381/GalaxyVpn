@@ -60,18 +60,16 @@ Future<void> main() async {
 
   final prefsService = PreferencesService(sharedPreferences);
 
-  // First launch: start low-memory phones on lighter animations. The user can
-  // change it any time under Settings › Animations.
-  if (prefsService.motionLevel == null) {
-    final lowEnd = await AndroidSystem.isLowEndDevice().timeout(
+  // Budget phones start on lighter animations unless the user picked a level
+  // under Settings › Animations. The answer is ready on the native side
+  // before Dart starts, so this costs one channel round trip.
+  final motionSettings = MotionSettings(prefsService);
+  await motionSettings.applyDeviceDefault(
+    lowEndDevice: await AndroidSystem.isLowEndDevice().timeout(
       const Duration(seconds: 1),
       onTimeout: () => false,
-    );
-    await prefsService.setMotionLevel(
-      (lowEnd ? MotionLevel.lite : MotionLevel.full).name,
-    );
-  }
-  final motionSettings = MotionSettings(prefsService);
+    ),
+  );
 
   // Instantiate Clean Architecture platform and domain services
   final vpnService = UnifiedVpnPlatformDataSource(prefs: prefsService);

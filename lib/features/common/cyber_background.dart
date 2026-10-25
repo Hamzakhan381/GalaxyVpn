@@ -526,10 +526,17 @@ class _AnimatedFadeSlideState extends State<AnimatedFadeSlide>
     super.didChangeDependencies();
     final replay = EntranceReplay.maybeOf(context);
     if (replay != _replay) {
-      _replay?.removeListener(_play);
-      _replay = replay?..addListener(_play);
+      _replay?.removeListener(_replayEntrance);
+      _replay = replay?..addListener(_replayEntrance);
     }
     if (_generation == 0) _play();
+  }
+
+  /// Below full quality only the first entrance plays: fading every card in
+  /// again on each tab switch made low-end phones stutter.
+  void _replayEntrance() {
+    if (Motion.isLite(context)) return;
+    _play();
   }
 
   void _play() {
@@ -554,7 +561,7 @@ class _AnimatedFadeSlideState extends State<AnimatedFadeSlide>
 
   @override
   void dispose() {
-    _replay?.removeListener(_play);
+    _replay?.removeListener(_replayEntrance);
     _controller.dispose();
     super.dispose();
   }

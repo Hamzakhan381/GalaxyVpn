@@ -1,42 +1,71 @@
 package com.shieldroute.vpn.shieldroute_vpn
 
 import android.Manifest
+import android.app.Activity
 import android.app.ActivityManager
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.VpnService
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.provider.Settings
 import com.axevpn.flutter.openvpn.AxeVPNFlutterPlugin
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
+import io.flutter.embedding.engine.FlutterEngineCache
 import io.flutter.embedding.engine.FlutterShellArgs
 import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugins.sharedpreferences.SharedPreferencesPlugin
+import java.io.File
 
 class MainActivity : FlutterActivity() {
 
     companion object {
+        private const val ENGINE_ID = "galaxy_vpn_engine"
         private const val METHOD_CHANNEL = "com.galaxyvpn/native_engine"
         private const val EVENT_CHANNEL = "com.galaxyvpn/events"
         private const val VPN_REQUEST_CODE = 1024
         private const val NOTIFICATION_REQUEST_CODE = 1025
 
-        /** Under ~3 GB of RAM (Android reports a little less than installed). */
-        private const val LOW_END_RAM_BYTES = 3_200_000_000L
-    }
+        /** Under ~4 GB of RAM (Android reports a little less than installed). */
+        private const val LOW_END_RAM_BYTES = 3_700_000_000L
 
-    private var pendingPermissionResult: MethodChannel.Result? = null
-    private var pendingNotificationResult: MethodChannel.Result? = null
+        /** Fastest core below 2.05 GHz: budget SoCs (Unisoc T6xx, Helio G8x). */
+        private const val LOW_END_MAX_CPU_KHZ = 2_050_000L
 
-    private var vpnPluginAttached = false
-    private val vpnPluginWaiters = mutableListOf<MethodChannel.Result>()
+        private val mainHandler = Handler(Looper.getMainLooper())
 
-    private val isLowEndDevice: Boolean by lazy {
-        val am = getSystemService(ActivityManager::class.java)
-        val memory = ActivityManager.MemoryInfo().also { am?.getMemoryInfo(it) }
-        am?.isLowRamDevice == true || memory.totalMem in 1 until LOW_END_RAM_BYTES
+        /** The visible activity, for calls that need one (dialogs, results). */
+        private var current: MainActivity? = null
+
+        private var pendingPermissionResult: MethodChannel.Result? = null
+        private var pendingNotificationResult: MethodChannel.Result? = null
+        private var vpnPluginAttached = false
+        private val vpnPluginWaiters = mutableListOf<MethodChannel.Result>()
+
+        @Volatile
+        private var lowEndCache: Boolean? = null
+
+        /**
+         * Budget phone: little memory, or slow cores. Such phones get the
+         * OpenGL ES renderer and lighter animations.
+         */
+        fun isLowEndDevice(context: Context): Boolean = lowEndCache ?: run {
+            val am = context.getSystemService(ActivityManager::class.java)
+            val memory = ActivityManager.MemoryInfo().also { am?.getMemoryInfo(it) }
+            val maxCpuKhz = (0 until Runtime.getRuntime().availableProcessors()).maxOfOrNull { core ->
+                runCatching {
+                    File("/sys/devices/system/cpu/cpu$core/cpufreq/cpuinfo_max_freq")
+                        .readText().trim().toLong()
+                }.getOrDefault(0L)
+            } ?: 0L
+            (am?.isLowRamDevice == true ||
+                memory.totalMem in 1 until LOW_END_RAM_BYTES ||
+                maxCpuKhz in 1 until LOW_END_MAX_CPU_KHZ).also { lowEndCache = it }
+        }
     }
 
     /**
@@ -46,23 +75,60 @@ class MainActivity : FlutterActivity() {
      */
     override fun getFlutterShellArgs(): FlutterShellArgs {
         val args = super.getFlutterShellArgs()
-        if (isLowEndDevice) {
+        if (isLowEndDevice(this)) {
             args.add("--impeller-backend=opengles")
             args.add("--impeller-lazy-shader-mode")
         }
         return args
     }
 
-    override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
-        // Plugins are registered here rather than by super's generated
-        // registrant: the VPN plugin loads several native libraries and boots
-        // WireGuard's Go runtime when attached, which on the main thread kept
-        // low-end phones on the launch screen. It attaches once that work has
-        // finished on a background thread.
-        flutterEngine.plugins.add(SharedPreferencesPlugin())
-        attachVpnPluginInBackground(flutterEngine)
+    /**
+     * One engine for the life of the process, reused by every activity. The
+     * VPN service keeps the process alive after the app is swiped away; a new
+     * engine there restarted the whole app from its splash (and under a
+     * debugger never started at all), while the kept engine reopens instantly
+     * on the live connection.
+     */
+    override fun provideFlutterEngine(context: Context): FlutterEngine {
+        FlutterEngineCache.getInstance().get(ENGINE_ID)?.let { return it }
+        val engine = FlutterEngine(
+            applicationContext,
+            getFlutterShellArgs().toArray(),
+            /* automaticallyRegisterPlugins = */ false,
+        )
+        // Registered here rather than by the generated registrant: the VPN
+        // plugin loads several native libraries and boots WireGuard's Go
+        // runtime when attached, which on the main thread kept low-end phones
+        // on the launch screen. It attaches once that work has finished on a
+        // background thread.
+        engine.plugins.add(SharedPreferencesPlugin())
+        attachVpnPluginInBackground(engine)
+        setUpChannels(engine)
+        FlutterEngineCache.getInstance().put(ENGINE_ID, engine)
+        return engine
+    }
 
-        EventChannel(flutterEngine.dartExecutor.binaryMessenger, EVENT_CHANNEL)
+    /** Plugins and channels are set up once, with the engine. */
+    override fun configureFlutterEngine(flutterEngine: FlutterEngine) {}
+
+    override fun onCreate(savedInstanceState: android.os.Bundle?) {
+        current = this
+        super.onCreate(savedInstanceState)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        current = this
+    }
+
+    override fun onDestroy() {
+        if (current === this) current = null
+        super.onDestroy()
+    }
+
+    private fun setUpChannels(engine: FlutterEngine) {
+        val appContext = applicationContext
+        EventChannel(engine.dartExecutor.binaryMessenger, EVENT_CHANNEL)
             .setStreamHandler(object : EventChannel.StreamHandler {
                 override fun onListen(arguments: Any?, events: EventChannel.EventSink?) {
                     GalaxyVpnService.eventSink = events
@@ -73,27 +139,28 @@ class MainActivity : FlutterActivity() {
                 }
             })
 
-        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, METHOD_CHANNEL)
+        MethodChannel(engine.dartExecutor.binaryMessenger, METHOD_CHANNEL)
             .setMethodCallHandler { call, result ->
+                val activity = current
                 when (call.method) {
                     "prepare" -> {
-                        val intent = VpnService.prepare(this)
+                        val intent = VpnService.prepare(appContext)
                         if (intent == null) {
                             result.success(true)
-                        } else if (pendingPermissionResult != null) {
+                        } else if (activity == null || pendingPermissionResult != null) {
                             result.success(false)
                         } else {
                             pendingPermissionResult = result
                             @Suppress("DEPRECATION")
-                            startActivityForResult(intent, VPN_REQUEST_CODE)
+                            activity.startActivityForResult(intent, VPN_REQUEST_CODE)
                         }
                     }
                     "connect" -> {
-                        if (VpnService.prepare(this) != null) {
+                        if (VpnService.prepare(appContext) != null) {
                             result.error("PERMISSION", "VPN permission has not been granted", null)
                             return@setMethodCallHandler
                         }
-                        val intent = Intent(this, GalaxyVpnService::class.java)
+                        val intent = Intent(appContext, GalaxyVpnService::class.java)
                             .setAction(GalaxyVpnService.ACTION_CONNECT)
                             .putExtra(GalaxyVpnService.EXTRA_HOSTNAME, call.argument<String>("hostname"))
                             .putExtra(GalaxyVpnService.EXTRA_ADDRESS, call.argument<String>("address"))
@@ -102,16 +169,16 @@ class MainActivity : FlutterActivity() {
                             .putExtra(GalaxyVpnService.EXTRA_PASSWORD, call.argument<String>("password"))
                             .putExtra(GalaxyVpnService.EXTRA_SERVER_NAME, call.argument<String>("serverName"))
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                            startForegroundService(intent)
+                            appContext.startForegroundService(intent)
                         } else {
-                            startService(intent)
+                            appContext.startService(intent)
                         }
                         result.success(true)
                     }
                     "disconnect" -> {
                         if (GalaxyVpnService.currentState != "disconnected") {
-                            startService(
-                                Intent(this, GalaxyVpnService::class.java)
+                            appContext.startService(
+                                Intent(appContext, GalaxyVpnService::class.java)
                                     .setAction(GalaxyVpnService.ACTION_DISCONNECT),
                             )
                         }
@@ -125,32 +192,35 @@ class MainActivity : FlutterActivity() {
                     // Android's VPN screen, where Always-on VPN and "Block
                     // connections without VPN" (the system kill switch) live.
                     "openVpnSettings" -> {
-                        val opened = runCatching {
-                            startActivity(Intent(Settings.ACTION_VPN_SETTINGS))
-                        }.isSuccess || runCatching {
-                            startActivity(Intent(Settings.ACTION_WIRELESS_SETTINGS))
+                        val launcher: Context = activity ?: appContext
+                        fun open(action: String) = runCatching {
+                            launcher.startActivity(
+                                Intent(action).apply {
+                                    if (launcher !is Activity) addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                },
+                            )
                         }.isSuccess
-                        result.success(opened)
+                        result.success(
+                            open(Settings.ACTION_VPN_SETTINGS) || open(Settings.ACTION_WIRELESS_SETTINGS),
+                        )
                     }
-                    // Back on the home screen: keep the app (and its engine)
-                    // alive in the background instead of finishing it, so
-                    // reopening is instant and shows the live connection.
-                    "moveToBackground" -> result.success(moveTaskToBack(true))
-                    // Phones with little memory get lighter animations.
-                    "isLowEndDevice" -> result.success(isLowEndDevice)
+                    // Back on the home screen: keep the app alive in the
+                    // background instead of finishing it.
+                    "moveToBackground" -> result.success(activity?.moveTaskToBack(true) ?: false)
+                    "isLowEndDevice" -> result.success(isLowEndDevice(appContext))
                     // Android 13+ hides the connection notification (and its
                     // Disconnect action) until this is granted.
                     "requestNotificationPermission" -> {
                         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
-                            checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) ==
+                            appContext.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) ==
                             PackageManager.PERMISSION_GRANTED
                         ) {
                             result.success(true)
-                        } else if (pendingNotificationResult != null) {
+                        } else if (activity == null || pendingNotificationResult != null) {
                             result.success(false)
                         } else {
                             pendingNotificationResult = result
-                            requestPermissions(
+                            activity.requestPermissions(
                                 arrayOf(Manifest.permission.POST_NOTIFICATIONS),
                                 NOTIFICATION_REQUEST_CODE,
                             )
@@ -168,8 +238,7 @@ class MainActivity : FlutterActivity() {
             // runtime, so preload that library here too.
             runCatching { Class.forName(AxeVPNFlutterPlugin::class.java.name) }
             runCatching { System.loadLibrary("wg-go") }
-            runOnUiThread {
-                if (isDestroyed) return@runOnUiThread
+            mainHandler.post {
                 runCatching { engine.plugins.add(AxeVPNFlutterPlugin()) }
                     .onFailure { android.util.Log.e("MainActivity", "VPN plugin attach failed", it) }
                 vpnPluginAttached = true

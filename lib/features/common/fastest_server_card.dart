@@ -176,13 +176,13 @@ class _FastestServerCardState extends State<FastestServerCard>
                   : AppColors.borderDivider,
               width: 1.1,
             ),
-            boxShadow: [
+            boxShadow: Motion.shadows(context, [
               BoxShadow(
                 color: Colors.black.withValues(alpha: 0.35),
                 blurRadius: 16,
                 offset: const Offset(0, 4),
               ),
-            ],
+            ]),
           ),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(22),
@@ -421,9 +421,9 @@ class _FastestServerCardState extends State<FastestServerCard>
                         decoration: BoxDecoration(
                           color: pingColor,
                           shape: BoxShape.circle,
-                          boxShadow: [
+                          boxShadow: Motion.shadows(context, [
                             BoxShadow(color: pingColor, blurRadius: 4),
-                          ],
+                          ]),
                         ),
                       ),
                     ],
@@ -634,13 +634,13 @@ class _FastestServerCardState extends State<FastestServerCard>
                 decoration: BoxDecoration(
                   color: AppColors.primaryAccent,
                   borderRadius: BorderRadius.circular(14),
-                  boxShadow: [
+                  boxShadow: Motion.shadows(context, [
                     BoxShadow(
                       color: Colors.black.withValues(alpha: 0.35),
                       blurRadius: 10,
                       offset: const Offset(0, 3),
                     ),
-                  ],
+                  ]),
                 ),
                 child: Material(
                   color: Colors.transparent,

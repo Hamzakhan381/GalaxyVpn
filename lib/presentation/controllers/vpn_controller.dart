@@ -158,9 +158,15 @@ class VpnController extends ChangeNotifier {
 
     _metricsSub = _getVpnMetricsStreamUseCase().listen((metrics) {
       _sampleThroughput(metrics);
-      notifyListeners();
+      _metricsTick.notify();
     });
   }
+
+  /// Fires on every traffic sample, about once a second while connected.
+  /// Kept apart from [notifyListeners] so only the live readouts redraw, not
+  /// every screen that watches the controller.
+  Listenable get metricsListenable => _metricsTick;
+  final _MetricsTick _metricsTick = _MetricsTick();
 
   // Live throughput, derived from successive traffic counters.
   int _lastByteIn = 0;
@@ -754,7 +760,12 @@ class VpnController extends ChangeNotifier {
     _cancelRotation();
     _stateSub.cancel();
     _metricsSub.cancel();
+    _metricsTick.dispose();
     vpnService.dispose();
     super.dispose();
   }
+}
+
+class _MetricsTick extends ChangeNotifier {
+  void notify() => notifyListeners();
 }

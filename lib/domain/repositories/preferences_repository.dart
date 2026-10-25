@@ -38,6 +38,11 @@ abstract class PreferencesRepository {
   String? get motionLevel;
   Future<bool> setMotionLevel(String level);
 
+  /// True once the user picked the animation level themselves; until then
+  /// the app picks it from the device's capability on every launch.
+  bool get motionLevelChosen;
+  Future<bool> setMotionLevelChosen(bool chosen);
+
   bool get emulatorMode;
   Future<bool> setEmulatorMode(bool val);
 

@@ -35,10 +35,25 @@ class MotionSettings extends ChangeNotifier {
 
   MotionLevel get level => _level;
 
+  /// The user's own choice: kept from now on instead of the device default.
   Future<void> setLevel(MotionLevel level) async {
-    if (level == _level) return;
-    _level = level;
-    notifyListeners();
+    await _prefs.setMotionLevelChosen(true);
+    await _apply(level);
+  }
+
+  /// Picks the level for this device unless the user chose one: lite on
+  /// low-end phones, full elsewhere. Checked on every launch, so a phone
+  /// first judged wrongly (or by an older app version) is corrected.
+  Future<void> applyDeviceDefault({required bool lowEndDevice}) async {
+    if (_prefs.motionLevelChosen) return;
+    await _apply(lowEndDevice ? MotionLevel.lite : MotionLevel.full);
+  }
+
+  Future<void> _apply(MotionLevel level) async {
+    if (level != _level) {
+      _level = level;
+      notifyListeners();
+    }
     await _prefs.setMotionLevel(level.name);
   }
 }
@@ -90,6 +105,14 @@ class Motion {
   /// True below full quality: hold always-running decorative effects still.
   static bool isLite(BuildContext context) =>
       levelOf(context) != MotionLevel.full;
+
+  /// [shadows] at full quality, none below it. Impeller keeps no raster cache,
+  /// so every soft shadow on screen is blurred again on each frame, which
+  /// budget GPUs feel the most; the surfaces' borders still separate them.
+  static List<BoxShadow>? shadows(
+    BuildContext context,
+    List<BoxShadow> shadows,
+  ) => isLite(context) ? null : shadows;
 }
 
 /// Lets a subtree replay its [AnimatedFadeSlide] entrances, e.g. each time a
@@ -227,7 +250,9 @@ class OdometerText extends StatelessWidget {
           children: [
             for (int i = 0; i < chars.length; i++)
               AnimatedSwitcher(
-                duration: Motion.isReduced(context) ? Duration.zero : duration,
+                // Below full quality digits change in place: the roll redraws
+                // the screen for a third of every second while connected.
+                duration: Motion.isLite(context) ? Duration.zero : duration,
                 switchInCurve: Curves.easeOutCubic,
                 switchOutCurve: Curves.easeInCubic,
                 layoutBuilder: (current, previous) => Stack(

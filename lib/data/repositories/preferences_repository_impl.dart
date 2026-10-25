@@ -77,6 +77,13 @@ class PreferencesRepositoryImpl implements PreferencesRepository {
       _dataSource.setMotionLevel(level);
 
   @override
+  bool get motionLevelChosen => _dataSource.motionLevelChosen;
+
+  @override
+  Future<bool> setMotionLevelChosen(bool chosen) =>
+      _dataSource.setMotionLevelChosen(chosen);
+
+  @override
   bool get emulatorMode => _dataSource.emulatorMode;
 
   @override

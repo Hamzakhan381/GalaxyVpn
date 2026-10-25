@@ -195,7 +195,7 @@ class _ConnectionOrbState extends State<ConnectionOrb>
                       color: statusColor,
                       width: isConnected ? 2.0 : 1.8,
                     ),
-                    boxShadow: [
+                    boxShadow: Motion.shadows(context, [
                       BoxShadow(
                         color: Colors.black.withValues(alpha: 0.65),
                         blurRadius: 22,
@@ -217,7 +217,7 @@ class _ConnectionOrbState extends State<ConnectionOrb>
                           blurRadius: 16,
                           spreadRadius: 1,
                         ),
-                    ],
+                    ]),
                   ),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,

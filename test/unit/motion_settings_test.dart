@@ -36,6 +36,29 @@ void main() {
     expect(prefs.reduceMotion, isTrue);
   });
 
+  test('the device picks the level until the user chooses one', () async {
+    final prefs = await prefsWith({});
+    final motion = MotionSettings(prefs);
+
+    await motion.applyDeviceDefault(lowEndDevice: true);
+    expect(motion.level, MotionLevel.lite);
+    await motion.applyDeviceDefault(lowEndDevice: false);
+    expect(motion.level, MotionLevel.full);
+
+    await motion.setLevel(MotionLevel.lite);
+    await motion.applyDeviceDefault(lowEndDevice: false);
+    expect(motion.level, MotionLevel.lite);
+    expect(prefs.motionLevelChosen, isTrue);
+  });
+
+  test('the old Reduce Motion switch counts as a choice', () async {
+    final prefs = await prefsWith({'setting_reduce_motion': true});
+    final motion = MotionSettings(prefs);
+
+    await motion.applyDeviceDefault(lowEndDevice: false);
+    expect(motion.level, MotionLevel.off);
+  });
+
   testWidgets('widgets follow a level change immediately', (tester) async {
     final prefs = await prefsWith({});
     final motion = MotionSettings(prefs);

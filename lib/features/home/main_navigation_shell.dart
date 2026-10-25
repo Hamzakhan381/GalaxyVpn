@@ -201,17 +201,17 @@ class _MainNavigationShellState extends State<MainNavigationShell>
 
   Widget _buildCyberNavigationBar() {
     return Container(
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: AppColors.secondaryBackground, // #121212
-        border: Border(
+        border: const Border(
           top: BorderSide(
             color: AppColors.borderDivider, // #2D2D2D
             width: 1.0,
           ),
         ),
-        boxShadow: [
+        boxShadow: Motion.shadows(context, [
           BoxShadow(color: Colors.black, blurRadius: 16, offset: Offset(0, -4)),
-        ],
+        ]),
       ),
       child: SafeArea(
         top: false,
@@ -278,12 +278,12 @@ class _MainNavigationShellState extends State<MainNavigationShell>
             decoration: BoxDecoration(
               color: AppColors.primaryText,
               borderRadius: BorderRadius.circular(2),
-              boxShadow: [
+              boxShadow: Motion.shadows(context, [
                 BoxShadow(
                   color: AppColors.primaryText.withValues(alpha: 0.6),
                   blurRadius: 8,
                 ),
-              ],
+              ]),
             ),
           ),
         ),

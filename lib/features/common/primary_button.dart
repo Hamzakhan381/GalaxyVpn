@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../app/theme/app_colors.dart';
 import '../../app/theme/app_text_styles.dart';
+import 'motion.dart';
 
 /// Primary action button in pure white with dark obsidian text.
 /// Minimalist luxury cybersecurity visual identity.
@@ -41,7 +42,7 @@ class _PrimaryButtonState extends State<PrimaryButton> {
         height: 52,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
-          boxShadow: isEnabled
+          boxShadow: isEnabled && !Motion.isLite(context)
               ? [
                   BoxShadow(
                     color: Colors.black.withValues(alpha: 0.35),

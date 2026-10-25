@@ -4,6 +4,7 @@ import '../../app/theme/app_colors.dart';
 import '../../app/theme/app_text_styles.dart';
 import '../../data/models/vpn_server.dart';
 import 'country_badge.dart';
+import 'motion.dart';
 
 class ServerListTile extends StatefulWidget {
   final VpnServer server;
@@ -96,13 +97,13 @@ class _ServerListTileState extends State<ServerListTile>
                 : AppColors.borderDivider,
             width: isSelected || isConnected ? 1.5 : 1.0,
           ),
-          boxShadow: [
+          boxShadow: Motion.shadows(context, [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.35),
               blurRadius: 10,
               offset: const Offset(0, 3),
             ),
-          ],
+          ]),
         ),
         child: Material(
           color: Colors.transparent,

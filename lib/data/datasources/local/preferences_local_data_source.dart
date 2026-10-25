@@ -103,6 +103,13 @@ class PreferencesLocalDataSource {
       _prefs.getString(AppConstants.keyMotionLevel) ??
       (reduceMotion ? 'off' : null);
 
+  /// The older Reduce Motion switch was always the user's own choice.
+  bool get motionLevelChosen =>
+      _prefs.getBool(AppConstants.keyMotionLevelChosen) ?? reduceMotion;
+
+  Future<bool> setMotionLevelChosen(bool chosen) =>
+      _prefs.setBool(AppConstants.keyMotionLevelChosen, chosen);
+
   Future<bool> setMotionLevel(String level) async {
     await setReduceMotion(level == 'off');
     return _prefs.setString(AppConstants.keyMotionLevel, level);
