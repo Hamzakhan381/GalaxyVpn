@@ -1,8 +1,8 @@
-# ShieldRoute VPN — Privacy Notes & Data Boundary Declarations
+# Galaxy VPN — Privacy Notes & Data Boundary Declarations
 
 ## 1. Academic Scope & Integrity
 
-ShieldRoute VPN is an academic research prototype engineered for a university Mobile App Development curriculum. Unlike commercial VPNs that make marketing claims such as "100% untraceable" or "military-grade absolute anonymity," ShieldRoute adheres to strict academic honesty:
+Galaxy VPN is an academic research prototype engineered for a university Mobile App Development curriculum. Unlike commercial VPNs that make marketing claims such as "100% untraceable" or "military-grade absolute anonymity," Galaxy VPN adheres to strict academic honesty:
 - No software provides absolute invisibility across all network adversary models.
 - VPN encryption protects network data between your device and the chosen relay gateway.
 - Public relay operators may maintain standard server connection timestamps and access logs in according with their respective regional regulations.

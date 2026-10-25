@@ -1,4 +1,4 @@
-# ShieldRoute VPN — Stitch Design System Reference (Quiet Bastion)
+# Galaxy VPN — Stitch Design System Reference (Quiet Bastion)
 
 **Design Source of Truth:** Google Stitch Project `App Screen UI Design` (`projects/3821877934525041340`)  
 **Design Theme:** Quiet Bastion  
@@ -112,7 +112,7 @@ A dedicated `112dp` circular action button centered on the Home screen:
 
 ## 6. Stitch Project Screens Inventory
 
-1. **S01 — Splash Screen (Animated):** Custom ShieldRoute logo, subtle route/shield animation, 1.2–1.6s transition.
+1. **S01 — Splash Screen (Animated):** Custom Galaxy VPN logo, subtle shield animation, 1.2–1.6s transition.
 2. **S01 — Welcome & Entry:** Brand greeting, "Create Account", "Login", and prominent "Continue as Guest".
 3. **S02 — Authentication:** Clean Login, Sign Up, Forgot Password flows with validation.
 4. **S03 — VPN Permission Disclosure:** Educational dialog explaining Android VpnService usage, traffic routing, uninspected traffic, unchecked consent checkbox required before system permission prompt.

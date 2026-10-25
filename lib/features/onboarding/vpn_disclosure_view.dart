@@ -4,7 +4,7 @@ import 'package:provider/provider.dart';
 import '../../app/theme/app_colors.dart';
 import '../../app/theme/app_text_styles.dart';
 import '../../core/storage/preferences_service.dart';
-import '../../data/repositories/vpn_repository.dart';
+import '../../presentation/controllers/vpn_controller.dart';
 import '../common/cyber_background.dart';
 import '../common/permission_disclosure_card.dart';
 import '../common/primary_button.dart';
@@ -29,7 +29,7 @@ class _VpnDisclosureViewState extends State<VpnDisclosureView> {
 
     try {
       final prefs = context.read<PreferencesService>();
-      final vpnRepo = context.read<VpnRepository>();
+      final vpnRepo = context.read<VpnController>();
 
       // Persist user consent
       await prefs.setVpnConsent(true);

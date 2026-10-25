@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:shieldroute_vpn/data/models/vpn_server.dart';
+import 'package:galaxy_vpn/data/models/vpn_server.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();

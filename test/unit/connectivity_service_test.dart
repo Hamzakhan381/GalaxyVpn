@@ -1,10 +1,11 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:shieldroute_vpn/services/connectivity_service.dart';
+import 'package:galaxy_vpn/data/repositories/connectivity_repository_impl.dart';
+import 'package:galaxy_vpn/domain/repositories/connectivity_repository.dart';
 
 // ─── Test-only stub that lets us control online/offline state ───────────────
-class _StubConnectivityService implements ConnectivityService {
+class _StubConnectivityService implements ConnectivityRepository {
   final StreamController<bool> _controller =
       StreamController<bool>.broadcast();
 
@@ -39,7 +40,7 @@ class _StubConnectivityService implements ConnectivityService {
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  group('ConnectivityService — Unit Tests', () {
+  group('ConnectivityRepository — Unit Tests', () {
     late _StubConnectivityService service;
 
     setUp(() {
@@ -152,16 +153,16 @@ void main() {
     });
   });
 
-  // ── DefaultConnectivityService integration test ───────────────────────────
-  group('DefaultConnectivityService — Integration', () {
-    test('DefaultConnectivityService can be constructed and disposed cleanly',
+  // ── ConnectivityRepositoryImpl integration test ───────────────────────────
+  group('ConnectivityRepositoryImpl — Integration', () {
+    test('ConnectivityRepositoryImpl can be constructed and disposed cleanly',
         () {
-      final svc = DefaultConnectivityService();
+      final svc = ConnectivityRepositoryImpl();
       expect(() => svc.dispose(), returnsNormally);
     });
 
-    test('DefaultConnectivityService exposes a broadcast stream', () {
-      final svc = DefaultConnectivityService();
+    test('ConnectivityRepositoryImpl exposes a broadcast stream', () {
+      final svc = ConnectivityRepositoryImpl();
       // Listening twice should not throw (broadcast stream check)
       final sub1 = svc.onConnectivityChanged.listen((_) {});
       final sub2 = svc.onConnectivityChanged.listen((_) {});
@@ -171,9 +172,9 @@ void main() {
     });
 
     test(
-        'DefaultConnectivityService.checkInternetAccess returns a bool within timeout',
+        'ConnectivityRepositoryImpl.checkInternetAccess returns a bool within timeout',
         () async {
-      final svc = DefaultConnectivityService();
+      final svc = ConnectivityRepositoryImpl();
       // May be true or false depending on network state; critical assertion
       // is that it returns a bool and does not throw.
       final result = await svc

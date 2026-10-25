@@ -1,4 +1,4 @@
-/// Connection states strictly enforced by the ShieldRoute VPN state machine
+/// Connection states strictly enforced by the Galaxy VPN state machine
 enum VpnConnectionState {
   disconnected,
   checking,

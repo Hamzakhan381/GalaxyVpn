@@ -86,7 +86,7 @@ class PreferencesLocalDataSource {
 
   String get preferredProtocol {
     final saved = _prefs.getString(AppConstants.keyPreferredProtocol);
-    return saved ?? 'ShieldRoute Native (WireGuard-Optimized)';
+    return saved ?? 'Galaxy VPN Native (WireGuard-Optimized)';
   }
 
   Future<bool> setPreferredProtocol(String val) =>

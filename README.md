@@ -1,4 +1,4 @@
-# ShieldRoute VPN — Android Flutter Client
+# Galaxy VPN — Android Flutter Client
 
 > **Academic Project:** University Mobile App Development  
 > **Target Platform:** Android (Android 7.0 / API 24 through Android 16 / API 36)  
@@ -8,7 +8,7 @@
 
 ## 1. Project Overview
 
-**ShieldRoute VPN** is an Android VPN client application built with Flutter, Dart, and OpenVPN. Developed for university coursework, the app emphasizes:
+**Galaxy VPN** is an Android VPN client application built with Flutter, Dart, and OpenVPN. Developed for university coursework, the app emphasizes:
 - Clean modular architecture isolating UI from VPN protocol primitives.
 - Strict visual adherence to the Google Stitch design system (**Quiet Bastion**).
 - Educational transparency, clear VPN permission disclosures, and honest privacy assurances.
@@ -45,14 +45,14 @@ Detailed token mappings are preserved in [`.stitch/DESIGN.md`](.stitch/DESIGN.md
 
 ## 4. Architecture
 
-ShieldRoute strictly decouples the UI layer from underlying VPN protocols:
+Galaxy VPN strictly decouples the UI layer from underlying VPN protocols:
 
 ```
 UI Layer (Widgets & Views)
         ↓
-Controller & Repository Layer (VpnRepository, ServerService, AuthService)
+Controller & Repository Layer (VpnController, ServerRepository, AuthRepository)
         ↓
-Service Abstraction Layer (VpnService contract)
+Platform Abstraction Layer (VpnPlatformDataSource contract)
         ↓
 Protocol Implementation (native SSTP VpnService → OpenVPN fallback via axevpn_flutter)
         ↓
@@ -65,7 +65,7 @@ For diagrams and flowcharts, see [`ARCHITECTURE.md`](ARCHITECTURE.md).
 
 ## 5. Key Features
 
-1. **Animated Interactive Splash:** Custom vector ShieldRoute shield and route path with smooth tween curves.
+1. **Animated Interactive Splash:** Custom vector Galaxy VPN shield and orbit path with smooth tween curves.
 2. **Flexible Entry Options:** Create Account, Sign In, or full-featured **Guest Mode** requiring zero registration.
 3. **Transparent Permission Disclosure (Phase 9):** Explains VpnService, traffic encapsulation, and uninspected packets with an unchecked consent checkbox.
 4. **Real Connection State Machine:** States `DISCONNECTED`, `CHECKING`, `CONNECTING`, `CONNECTED`, `DISCONNECTING`, and `ERROR`. The UI never fakes a connected state.

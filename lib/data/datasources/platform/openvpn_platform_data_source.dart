@@ -68,7 +68,7 @@ class OpenVpnPlatformDataSource implements VpnPlatformDataSource {
       );
 
       await _engine?.initialize(
-        localizedDescription: 'ShieldRoute Academic VPN',
+        localizedDescription: 'Galaxy VPN Academic',
       );
       _isInitialized = true;
       if (await _engine?.isConnected() ?? false) {
@@ -265,7 +265,7 @@ class OpenVpnPlatformDataSource implements VpnPlatformDataSource {
 
         await _engine!.connect(
           preparedConfig,
-          'ShieldRoute - ${server.country}',
+          'Galaxy VPN - ${server.country}',
           username: server.username,
           password: server.password,
           certIsRequired: certIsRequired,

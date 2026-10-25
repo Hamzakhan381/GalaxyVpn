@@ -4,8 +4,8 @@ import 'package:provider/provider.dart';
 import '../../app/theme/app_colors.dart';
 import '../../app/theme/app_text_styles.dart';
 import '../../core/storage/preferences_service.dart';
-import '../../data/repositories/vpn_repository.dart';
-import '../../services/auth_service.dart';
+import '../../domain/repositories/auth_repository.dart';
+import '../../presentation/controllers/vpn_controller.dart';
 import '../common/cyber_background.dart';
 import '../common/motion.dart';
 import '../common/settings_row.dart';
@@ -54,7 +54,7 @@ class _SettingsViewState extends State<SettingsView> {
           TextButton(
             onPressed: () async {
               Navigator.of(ctx).pop();
-              final auth = context.read<AuthService>();
+              final auth = context.read<AuthRepository>();
               await auth.deleteAccount();
               if (context.mounted) {
                 Navigator.of(context)
@@ -73,7 +73,7 @@ class _SettingsViewState extends State<SettingsView> {
     );
   }
 
-  void _confirmClearHistory(BuildContext context, VpnRepository vpnRepo) {
+  void _confirmClearHistory(BuildContext context, VpnController vpnRepo) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -126,8 +126,8 @@ class _SettingsViewState extends State<SettingsView> {
   @override
   Widget build(BuildContext context) {
     final prefs = context.watch<PreferencesService>();
-    final vpnRepo = context.read<VpnRepository>();
-    final auth = context.watch<AuthService>();
+    final vpnRepo = context.read<VpnController>();
+    final auth = context.watch<AuthRepository>();
 
     return Scaffold(
       backgroundColor: AppColors.primaryBackground,
@@ -494,7 +494,7 @@ class _SettingsViewState extends State<SettingsView> {
   void _showApiRegionDialog(
     BuildContext context,
     PreferencesService prefs,
-    VpnRepository vpnRepo,
+    VpnController vpnRepo,
   ) {
     const regions = ['Global (Auto)', 'Asia / Pacific', 'Americas', 'Europe'];
 
@@ -550,7 +550,7 @@ class _SettingsViewState extends State<SettingsView> {
   void _showCustomApiDialog(
     BuildContext context,
     PreferencesService prefs,
-    VpnRepository vpnRepo,
+    VpnController vpnRepo,
   ) {
     final urlController = TextEditingController(text: prefs.customApiUrl ?? '');
     final keyController = TextEditingController(text: prefs.customApiKey ?? '');

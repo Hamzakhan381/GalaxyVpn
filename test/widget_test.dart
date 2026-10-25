@@ -1,20 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:galaxy_vpn/app/theme/app_theme.dart';
+import 'package:galaxy_vpn/core/storage/preferences_service.dart';
+import 'package:galaxy_vpn/data/repositories/auth_repository_impl.dart';
+import 'package:galaxy_vpn/data/repositories/server_repository_impl.dart';
+import 'package:galaxy_vpn/domain/entities/vpn_connection_state.dart';
+import 'package:galaxy_vpn/domain/repositories/auth_repository.dart';
+import 'package:galaxy_vpn/features/auth/login_view.dart';
+import 'package:galaxy_vpn/features/common/connection_orb.dart';
+import 'package:galaxy_vpn/features/common/connection_status_badge.dart';
+import 'package:galaxy_vpn/features/common/cyber_background.dart';
+import 'package:galaxy_vpn/features/common/fastest_server_card.dart';
+import 'package:galaxy_vpn/features/onboarding/vpn_disclosure_view.dart';
+import 'package:galaxy_vpn/features/onboarding/welcome_view.dart';
+import 'package:galaxy_vpn/presentation/controllers/vpn_controller.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:shieldroute_vpn/app/theme/app_theme.dart';
-import 'package:shieldroute_vpn/core/storage/preferences_service.dart';
-import 'package:shieldroute_vpn/data/repositories/vpn_repository.dart';
-import 'package:shieldroute_vpn/features/auth/login_view.dart';
-import 'package:shieldroute_vpn/features/common/connection_orb.dart';
-import 'package:shieldroute_vpn/features/common/connection_status_badge.dart';
-import 'package:shieldroute_vpn/features/common/cyber_background.dart';
-import 'package:shieldroute_vpn/features/common/fastest_server_card.dart';
-import 'package:shieldroute_vpn/features/onboarding/vpn_disclosure_view.dart';
-import 'package:shieldroute_vpn/features/onboarding/welcome_view.dart';
-import 'package:shieldroute_vpn/services/auth_service.dart';
-import 'package:shieldroute_vpn/services/server_service.dart';
-import 'package:shieldroute_vpn/services/vpn_service.dart';
 
 import 'unit/vpn_state_machine_test.dart';
 
@@ -22,18 +23,18 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   late PreferencesService prefs;
-  late LocalAuthService auth;
+  late AuthRepositoryImpl auth;
   late MockVpnService mockVpn;
-  late DefaultServerService serverService;
-  late VpnRepository repository;
+  late ServerRepositoryImpl serverService;
+  late VpnController repository;
 
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
     prefs = await PreferencesService.create();
-    auth = LocalAuthService(prefs);
+    auth = AuthRepositoryImpl(prefs);
     mockVpn = MockVpnService();
-    serverService = DefaultServerService(prefs);
-    repository = VpnRepository(
+    serverService = ServerRepositoryImpl(preferencesRepo: prefs);
+    repository = VpnController(
       vpnService: mockVpn,
       serverService: serverService,
       prefs: prefs,
@@ -44,8 +45,8 @@ void main() {
     return MultiProvider(
       providers: [
         Provider<PreferencesService>.value(value: prefs),
-        Provider<AuthService>.value(value: auth),
-        ChangeNotifierProvider<VpnRepository>.value(value: repository),
+        Provider<AuthRepository>.value(value: auth),
+        ChangeNotifierProvider<VpnController>.value(value: repository),
       ],
       child: MaterialApp(
         theme: AppTheme.lightTheme,

@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../app/theme/app_colors.dart';
 import '../../app/theme/app_text_styles.dart';
-import '../../services/auth_service.dart';
+import '../../domain/repositories/auth_repository.dart';
 import '../common/cyber_background.dart';
 import '../common/primary_button.dart';
 import '../common/secondary_button.dart';
@@ -26,7 +26,7 @@ class _ProfileViewState extends State<ProfileView> {
   @override
   void initState() {
     super.initState();
-    final auth = context.read<AuthService>();
+    final auth = context.read<AuthRepository>();
     _nameController = TextEditingController(text: auth.currentUser?.name ?? '');
   }
 
@@ -39,7 +39,7 @@ class _ProfileViewState extends State<ProfileView> {
   Future<void> _saveName() async {
     setState(() => _isLoading = true);
     try {
-      final auth = context.read<AuthService>();
+      final auth = context.read<AuthRepository>();
       await auth.updateProfile(name: _nameController.text.trim());
       setState(() => _isEditing = false);
     } finally {
@@ -127,7 +127,7 @@ class _ProfileViewState extends State<ProfileView> {
 
   @override
   Widget build(BuildContext context) {
-    final auth = context.watch<AuthService>();
+    final auth = context.watch<AuthRepository>();
     final user = auth.currentUser;
 
     return Scaffold(

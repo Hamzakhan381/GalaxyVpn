@@ -4,7 +4,7 @@ import 'package:provider/provider.dart';
 import '../../app/theme/app_colors.dart';
 import '../../app/theme/app_text_styles.dart';
 import '../../core/storage/preferences_service.dart';
-import '../../services/auth_service.dart';
+import '../../domain/repositories/auth_repository.dart';
 import '../common/cyber_background.dart';
 import '../common/primary_button.dart';
 import '../common/secondary_button.dart';
@@ -48,7 +48,7 @@ class _SignUpViewState extends State<SignUpView> {
     });
 
     try {
-      final auth = context.read<AuthService>();
+      final auth = context.read<AuthRepository>();
       final prefs = context.read<PreferencesService>();
 
       await auth.signUp(
@@ -261,10 +261,12 @@ class _SignUpViewState extends State<SignUpView> {
                             ),
                           ),
                           validator: (val) {
-                            if (val == null || val.trim().isEmpty)
+                            if (val == null || val.trim().isEmpty) {
                               return 'Please enter your email.';
-                            if (!val.contains('@') || !val.contains('.'))
+                            }
+                            if (!val.contains('@') || !val.contains('.')) {
                               return 'Invalid email address.';
+                            }
                             return null;
                           },
                         ),

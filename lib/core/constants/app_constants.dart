@@ -3,8 +3,6 @@ class AppConstants {
   AppConstants._();
 
   static const String appName = 'Galaxy VPN';
-  static const String appTagline =
-      'Interstellar Privacy & High-Speed Encrypted Tunnel';
   static const String appVersion = '1.0.0';
   static const String academicContext =
       'University Mobile App Development Project';

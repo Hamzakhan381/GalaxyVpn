@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:shieldroute_vpn/core/storage/preferences_service.dart';
+import 'package:galaxy_vpn/core/storage/preferences_service.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -65,7 +65,7 @@ void main() {
 
       test('saveAuth with isGuest=true persists guest flag', () async {
         await prefs.saveAuth(
-          email: 'guest@shieldroute.internal',
+          email: 'guest@galaxyvpn.internal',
           name: 'Academic Guest',
           isGuest: true,
         );
@@ -147,10 +147,10 @@ void main() {
         expect(prefs.reconnectOnNetworkChange, isFalse);
       });
 
-      test('preferredProtocol defaults to ShieldRoute Native (WireGuard-Optimized)', () {
+      test('preferredProtocol defaults to Galaxy VPN Native (WireGuard-Optimized)', () {
         expect(
           prefs.preferredProtocol,
-          equals('ShieldRoute Native (WireGuard-Optimized)'),
+          equals('Galaxy VPN Native (WireGuard-Optimized)'),
         );
       });
 

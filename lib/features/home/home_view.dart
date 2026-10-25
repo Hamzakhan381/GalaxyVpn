@@ -7,8 +7,9 @@ import 'package:provider/provider.dart';
 import '../../app/theme/app_colors.dart';
 import '../../app/theme/app_text_styles.dart';
 import '../../core/constants/app_constants.dart';
-import '../../data/repositories/vpn_repository.dart';
-import '../../services/vpn_service.dart';
+import '../../domain/entities/vpn_connection_state.dart';
+import '../../domain/entities/vpn_live_metrics.dart';
+import '../../presentation/controllers/vpn_controller.dart';
 import '../common/connection_orb.dart';
 import '../common/connection_status_badge.dart';
 import '../common/country_badge.dart';
@@ -43,13 +44,13 @@ class _HomeViewState extends State<HomeView> with TickerProviderStateMixin {
     duration: const Duration(milliseconds: 520),
   );
 
-  late final VpnRepository _vpnRepo;
+  late final VpnController _vpnRepo;
   late VpnConnectionState _lastState;
 
   @override
   void initState() {
     super.initState();
-    _vpnRepo = context.read<VpnRepository>();
+    _vpnRepo = context.read<VpnController>();
     _lastState = _vpnRepo.connectionState;
     _vpnRepo.addListener(_onVpnChanged);
   }
@@ -85,7 +86,7 @@ class _HomeViewState extends State<HomeView> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<VpnRepository>(
+    return Consumer<VpnController>(
       builder: (context, vpnRepo, _) {
         final state = vpnRepo.connectionState;
         final selectedServer = vpnRepo.selectedServer;
@@ -382,7 +383,7 @@ class _HomeViewState extends State<HomeView> with TickerProviderStateMixin {
 
   Widget _buildServerCard(
     BuildContext context,
-    VpnRepository vpnRepo,
+    VpnController vpnRepo,
     dynamic server,
     bool isConnected,
     bool isConnecting,
@@ -588,7 +589,7 @@ class _HomeViewState extends State<HomeView> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildNoServerCard(BuildContext context, VpnRepository vpnRepo) {
+  Widget _buildNoServerCard(BuildContext context, VpnController vpnRepo) {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
@@ -827,7 +828,7 @@ class _HomeViewState extends State<HomeView> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildErrorBanner(BuildContext context, VpnRepository vpnRepo) {
+  Widget _buildErrorBanner(BuildContext context, VpnController vpnRepo) {
     final err = vpnRepo.vpnError ?? "Couldn't establish the VPN connection.";
     return Container(
       padding: const EdgeInsets.all(16),

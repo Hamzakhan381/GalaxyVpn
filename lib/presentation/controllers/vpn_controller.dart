@@ -8,6 +8,8 @@ import 'package:uuid/uuid.dart';
 import '../../data/datasources/platform/vpn_platform_data_source.dart';
 import '../../data/repositories/session_repository_impl.dart';
 import '../../data/repositories/vpn_repository_impl.dart';
+import '../../domain/entities/vpn_connection_state.dart';
+import '../../domain/entities/vpn_live_metrics.dart';
 import '../../domain/entities/vpn_server.dart';
 import '../../domain/entities/vpn_session.dart';
 import '../../domain/repositories/preferences_repository.dart';
@@ -24,7 +26,6 @@ import '../../domain/usecases/vpn/connect_vpn_usecase.dart';
 import '../../domain/usecases/vpn/disconnect_vpn_usecase.dart';
 import '../../domain/usecases/vpn/get_vpn_metrics_stream_usecase.dart';
 import '../../domain/usecases/vpn/get_vpn_state_stream_usecase.dart';
-import '../../services/vpn_service.dart';
 
 /// Clean Architecture Presentation Controller managing VPN state, active metrics,
 /// server selection, and session history recording.
@@ -71,12 +72,10 @@ class VpnController extends ChangeNotifier {
   late StreamSubscription<VpnLiveMetrics> _metricsSub;
 
   VpnController({
-    required dynamic vpnService,
-    required dynamic serverService,
-    required dynamic prefs,
-  }) : vpnService = vpnService as VpnPlatformDataSource,
-       serverService = serverService as ServerRepository,
-       prefs = prefs as PreferencesRepository {
+    required this.vpnService,
+    required this.serverService,
+    required this.prefs,
+  }) {
     _initUseCases();
     _loadStoredSessions();
     _initStreams();

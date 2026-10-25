@@ -8,16 +8,16 @@ import '../../../domain/entities/vpn_live_metrics.dart';
 import '../../../domain/entities/vpn_server.dart';
 import 'vpn_platform_data_source.dart';
 
-/// SSTP tunnel driven by the app's own Android VpnService (`ShieldRouteVpnService`).
+/// SSTP tunnel driven by the app's own Android VpnService (`GalaxyVpnService`).
 ///
 /// SSTP runs inside an ordinary TLS session, so it connects on networks whose
 /// deep packet inspection resets OpenVPN handshakes.
 class NativeVpnPlatformDataSource implements VpnPlatformDataSource {
   static const MethodChannel _methodChannel = MethodChannel(
-    'com.shieldroute.vpn/native_engine',
+    'com.galaxyvpn/native_engine',
   );
   static const EventChannel _eventChannel = EventChannel(
-    'com.shieldroute.vpn/events',
+    'com.galaxyvpn/events',
   );
 
   final StreamController<VpnConnectionState> _stateController =

@@ -11,7 +11,7 @@ import '../../app/theme/app_colors.dart';
 import '../../app/theme/app_text_styles.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/storage/preferences_service.dart';
-import '../../data/repositories/vpn_repository.dart';
+import '../../presentation/controllers/vpn_controller.dart';
 import '../common/app_logo.dart';
 import '../common/cyber_background.dart';
 import '../common/motion.dart';
@@ -158,7 +158,7 @@ class _SplashViewState extends State<SplashView> with TickerProviderStateMixin {
 
   Future<void> _loadServers() async {
     try {
-      final repo = context.read<VpnRepository>();
+      final repo = context.read<VpnController>();
       await repo.loadServers().timeout(_loadTimeout);
     } catch (e) {
       debugPrint('Splash server preload skipped: $e');

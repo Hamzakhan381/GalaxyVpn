@@ -1,8 +1,8 @@
-# ShieldRoute VPN — Architectural Blueprint (Clean Architecture)
+# Galaxy VPN — Architectural Blueprint (Clean Architecture)
 
 ## 1. Architectural Philosophy
 
-ShieldRoute VPN is architected using **Uncle Bob's Clean Architecture** principles adapted for modern Flutter engineering. The architecture strictly enforces:
+Galaxy VPN is architected using **Uncle Bob's Clean Architecture** principles adapted for modern Flutter engineering. The architecture strictly enforces:
 - **Independent Domain Layer**: Pure Dart entities, repository contracts, and single-responsibility use cases with zero framework, UI, or third-party package dependencies.
 - **Data Abstraction**: Segregated data sources (`local/`, `remote/`, `platform/`), data models (DTOs), and repository implementations.
 - **Inversion of Control**: High-level presentation logic depends only on domain abstractions.
@@ -93,12 +93,7 @@ lib/
 │
 ├── core/
 │   ├── constants/app_constants.dart            # Storage keys, disclosure copy, URLs
-│   ├── errors/                                 # VpnException & Failure domain representations
-│   │   ├── exceptions.dart
-│   │   ├── failures.dart
-│   │   └── vpn_exception.dart
-│   ├── storage/preferences_service.dart        # Clean preferences wrapper
-│   └── usecase/usecase.dart                    # Clean Architecture base UseCase contracts
+│   └── storage/preferences_service.dart        # Clean preferences wrapper
 │
 ├── domain/                                     # Pure business logic (Zero external dependencies)
 │   ├── entities/
@@ -116,7 +111,6 @@ lib/
 │   │   ├── session_repository.dart             # History logging contract
 │   │   └── vpn_repository.dart                 # VPN tunnel operation contract
 │   └── usecases/
-│       ├── auth/                               # Login, SignUp, GuestLogin, SignOut
 │       ├── servers/                            # GetServers, DetectFastest, ToggleFavorite, Probe
 │       ├── sessions/                           # GetHistory, SaveSession, ClearHistory
 │       └── vpn/                                # Connect, Disconnect, StateStream, MetricsStream
@@ -130,13 +124,12 @@ lib/
 │   │   │   └── server_remote_data_source.dart       # VPN Gate HTTPS registry and probes
 │   │   └── platform/
 │   │       ├── vpn_platform_data_source.dart        # Platform engine abstraction
-│   │       ├── native_vpn_platform_data_source.dart # SSTP tunnel (ShieldRouteVpnService)
+│   │       ├── native_vpn_platform_data_source.dart # SSTP tunnel (GalaxyVpnService)
 │   │       ├── openvpn_platform_data_source.dart    # axevpn_flutter OpenVPN driver
 │   │       └── unified_vpn_platform_data_source.dart# SSTP first, OpenVPN fallback
-│   ├── models/
-│   │   ├── auth_user_model.dart                # Auth DTO
-│   │   ├── vpn_server_model.dart               # Server node DTO
-│   │   └── vpn_session_model.dart              # Session DTO
+│   ├── models/                                 # Re-exports of the server & session entities
+│   │   ├── vpn_server.dart
+│   │   └── vpn_session.dart
 │   └── repositories/
 │       ├── auth_repository_impl.dart
 │       ├── connectivity_repository_impl.dart
@@ -160,13 +153,4 @@ lib/
 │   ├── settings/                               # SettingsView & ProfileView
 │   ├── privacy/                                # PrivacyCenterView & LegalViews
 │   └── support/                                # FaqView, ReportProblemView, AboutView
-│
-└── services/                                   # Backward-compatible service adapters
-    ├── auth_service.dart
-    ├── connectivity_service.dart
-    ├── native_vpn_service.dart
-    ├── openvpn_service.dart
-    ├── server_service.dart
-    ├── unified_vpn_service.dart
-    └── vpn_service.dart
 ```

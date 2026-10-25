@@ -1,22 +1,23 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:galaxy_vpn/core/storage/preferences_service.dart';
+import 'package:galaxy_vpn/data/models/vpn_server.dart';
+import 'package:galaxy_vpn/data/repositories/server_repository_impl.dart';
+import 'package:galaxy_vpn/domain/entities/server_sort_option.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:shieldroute_vpn/core/storage/preferences_service.dart';
-import 'package:shieldroute_vpn/data/models/vpn_server.dart';
-import 'package:shieldroute_vpn/services/server_service.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('Server Parsing, Filtering, and Sorting Tests', () {
     late PreferencesService prefs;
-    late DefaultServerService serverService;
+    late ServerRepositoryImpl serverService;
 
     setUp(() async {
       SharedPreferences.setMockInitialValues({
         'favorite_server_ids': ['vpngate_219.100.37.98_443_tcp'],
       });
       prefs = await PreferencesService.create();
-      serverService = DefaultServerService(prefs);
+      serverService = ServerRepositoryImpl(preferencesRepo: prefs);
     });
 
     test('Falls back to bundled VPN Gate relays when the catalog is unreachable', () async {

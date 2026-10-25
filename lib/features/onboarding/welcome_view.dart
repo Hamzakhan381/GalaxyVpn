@@ -5,7 +5,7 @@ import '../../app/theme/app_colors.dart';
 import '../../app/theme/app_text_styles.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/storage/preferences_service.dart';
-import '../../services/auth_service.dart';
+import '../../domain/repositories/auth_repository.dart';
 import '../auth/login_view.dart';
 import '../auth/signup_view.dart';
 import '../common/app_logo.dart';
@@ -48,7 +48,7 @@ class _WelcomeViewState extends State<WelcomeView>
   }
 
   Future<void> _handleGuest(BuildContext context) async {
-    final auth = context.read<AuthService>();
+    final auth = context.read<AuthRepository>();
     final prefs = context.read<PreferencesService>();
     await auth.continueAsGuest();
 

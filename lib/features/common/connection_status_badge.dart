@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../app/theme/app_colors.dart';
 import '../../app/theme/app_text_styles.dart';
-import '../../services/vpn_service.dart';
+import '../../domain/entities/vpn_connection_state.dart';
 
 /// Pill-shaped status badge with restrained status colors.
 class ConnectionStatusBadge extends StatefulWidget {

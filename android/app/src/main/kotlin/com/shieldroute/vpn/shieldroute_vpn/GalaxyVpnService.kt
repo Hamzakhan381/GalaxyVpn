@@ -25,15 +25,15 @@ import javax.net.ssl.SSLException
  * tunnel outlives the activity. State and traffic are reported to Flutter through
  * [eventSink] as `{type: state|metrics, ...}` maps.
  */
-class ShieldRouteVpnService : VpnService() {
+class GalaxyVpnService : VpnService() {
 
     companion object {
-        private const val TAG = "ShieldRouteVpnService"
+        private const val TAG = "GalaxyVpnService"
         private const val NOTIFICATION_CHANNEL_ID = "galaxy_vpn_tunnel"
         private const val NOTIFICATION_ID = 1001
 
-        const val ACTION_CONNECT = "com.shieldroute.vpn.action.CONNECT"
-        const val ACTION_DISCONNECT = "com.shieldroute.vpn.action.DISCONNECT"
+        const val ACTION_CONNECT = "com.galaxyvpn.action.CONNECT"
+        const val ACTION_DISCONNECT = "com.galaxyvpn.action.DISCONNECT"
         const val EXTRA_HOSTNAME = "hostname"
         const val EXTRA_ADDRESS = "address"
         const val EXTRA_PORT = "port"
@@ -202,7 +202,7 @@ class ShieldRouteVpnService : VpnService() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
         val disconnect = PendingIntent.getService(
-            this, 1, Intent(this, ShieldRouteVpnService::class.java).setAction(ACTION_DISCONNECT),
+            this, 1, Intent(this, GalaxyVpnService::class.java).setAction(ACTION_DISCONNECT),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
         val builder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {

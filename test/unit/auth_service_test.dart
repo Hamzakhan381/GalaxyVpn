@@ -1,19 +1,19 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:galaxy_vpn/core/storage/preferences_service.dart';
+import 'package:galaxy_vpn/data/repositories/auth_repository_impl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:shieldroute_vpn/core/storage/preferences_service.dart';
-import 'package:shieldroute_vpn/services/auth_service.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  group('LocalAuthService — Full Coverage Tests', () {
+  group('AuthRepositoryImpl — Full Coverage Tests', () {
     late PreferencesService prefs;
-    late LocalAuthService auth;
+    late AuthRepositoryImpl auth;
 
     setUp(() async {
       SharedPreferences.setMockInitialValues({});
       prefs = await PreferencesService.create();
-      auth = LocalAuthService(prefs);
+      auth = AuthRepositoryImpl(prefs);
     });
 
     // ── Initial State ────────────────────────────────────────────────────────
@@ -139,7 +139,7 @@ void main() {
 
       test('guest email is fixed internal address', () async {
         final user = await auth.continueAsGuest();
-        expect(user.email, equals('guest@shieldroute.internal'));
+        expect(user.email, equals('guest@galaxyvpn.internal'));
       });
 
       test('guest name is Academic Guest', () async {
@@ -234,17 +234,17 @@ void main() {
     // ── Persistence across restart ───────────────────────────────────────────
 
     group('Persistence', () {
-      test('auth state is reloaded on new LocalAuthService instance', () async {
+      test('auth state is reloaded on new AuthRepositoryImpl instance', () async {
         await auth.login('persist@test.com', 'password');
         // Simulate app restart with same SharedPreferences instance
-        final auth2 = LocalAuthService(prefs);
+        final auth2 = AuthRepositoryImpl(prefs);
         expect(auth2.isAuthenticated, isTrue);
         expect(auth2.currentUser?.email, equals('persist@test.com'));
       });
 
       test('guest state is reloaded after restart', () async {
         await auth.continueAsGuest();
-        final auth2 = LocalAuthService(prefs);
+        final auth2 = AuthRepositoryImpl(prefs);
         expect(auth2.isAuthenticated, isTrue);
         expect(auth2.isGuest, isTrue);
       });

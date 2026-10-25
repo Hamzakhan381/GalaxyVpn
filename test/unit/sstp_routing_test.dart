@@ -1,13 +1,13 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:shieldroute_vpn/data/datasources/platform/native_vpn_platform_data_source.dart';
-import 'package:shieldroute_vpn/data/datasources/platform/openvpn_platform_data_source.dart';
-import 'package:shieldroute_vpn/data/datasources/platform/unified_vpn_platform_data_source.dart';
-import 'package:shieldroute_vpn/data/datasources/remote/server_remote_data_source.dart';
-import 'package:shieldroute_vpn/domain/entities/vpn_connection_state.dart';
-import 'package:shieldroute_vpn/domain/entities/vpn_server.dart';
-import 'package:shieldroute_vpn/domain/repositories/preferences_repository.dart';
+import 'package:galaxy_vpn/data/datasources/platform/native_vpn_platform_data_source.dart';
+import 'package:galaxy_vpn/data/datasources/platform/openvpn_platform_data_source.dart';
+import 'package:galaxy_vpn/data/datasources/platform/unified_vpn_platform_data_source.dart';
+import 'package:galaxy_vpn/data/datasources/remote/server_remote_data_source.dart';
+import 'package:galaxy_vpn/domain/entities/vpn_connection_state.dart';
+import 'package:galaxy_vpn/domain/entities/vpn_server.dart';
+import 'package:galaxy_vpn/domain/repositories/preferences_repository.dart';
 
 /// SSTP engine double: succeeds, or fails with a native error [failCode].
 class _FakeSstp extends NativeVpnPlatformDataSource {

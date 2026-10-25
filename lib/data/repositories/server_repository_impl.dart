@@ -17,9 +17,9 @@ class ServerRepositoryImpl implements ServerRepository {
   List<VpnServer> _cachedServers = [];
 
   ServerRepositoryImpl({
-    required this.remoteDataSource,
+    ServerRemoteDataSource? remoteDataSource,
     required this.preferencesRepo,
-  });
+  }) : remoteDataSource = remoteDataSource ?? ServerRemoteDataSource();
 
   /// How many relays from a live catalog are persisted for offline use.
   static const int _persistedCatalogSize = 40;

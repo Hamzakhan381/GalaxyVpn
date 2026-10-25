@@ -1,16 +1,18 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:galaxy_vpn/core/storage/preferences_service.dart';
+import 'package:galaxy_vpn/data/datasources/platform/vpn_platform_data_source.dart';
+import 'package:galaxy_vpn/data/models/vpn_server.dart';
+import 'package:galaxy_vpn/data/models/vpn_session.dart';
+import 'package:galaxy_vpn/data/repositories/server_repository_impl.dart';
+import 'package:galaxy_vpn/domain/entities/vpn_connection_state.dart';
+import 'package:galaxy_vpn/domain/entities/vpn_live_metrics.dart';
+import 'package:galaxy_vpn/presentation/controllers/vpn_controller.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:shieldroute_vpn/core/storage/preferences_service.dart';
-import 'package:shieldroute_vpn/data/models/vpn_server.dart';
-import 'package:shieldroute_vpn/data/models/vpn_session.dart';
-import 'package:shieldroute_vpn/data/repositories/vpn_repository.dart';
-import 'package:shieldroute_vpn/services/server_service.dart';
-import 'package:shieldroute_vpn/services/vpn_service.dart';
 
 // ─── Mock VPN service with controllable failure injection ───────────────────
-class _MockVpnService implements VpnService {
+class _MockVpnService implements VpnPlatformDataSource {
   final StreamController<VpnConnectionState> _stateController =
       StreamController<VpnConnectionState>.broadcast();
   final StreamController<VpnLiveMetrics> _metricsController =
@@ -112,18 +114,18 @@ class _MockVpnService implements VpnService {
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  group('VpnRepository — Full Coverage Tests', () {
+  group('VpnController — Full Coverage Tests', () {
     late PreferencesService prefs;
     late _MockVpnService mockVpn;
-    late DefaultServerService serverService;
-    late VpnRepository repo;
+    late ServerRepositoryImpl serverService;
+    late VpnController repo;
 
     setUp(() async {
       SharedPreferences.setMockInitialValues({});
       prefs = await PreferencesService.create();
       mockVpn = _MockVpnService();
-      serverService = DefaultServerService(prefs);
-      repo = VpnRepository(
+      serverService = ServerRepositoryImpl(preferencesRepo: prefs);
+      repo = VpnController(
         vpnService: mockVpn,
         serverService: serverService,
         prefs: prefs,
@@ -381,7 +383,7 @@ void main() {
       test('disconnect() graceful even without prior connect', () async {
         // Create a fresh repo+mock pair that is not reused by tearDown
         final freshMock = _MockVpnService();
-        final freshRepo = VpnRepository(
+        final freshRepo = VpnController(
           vpnService: freshMock,
           serverService: serverService,
           prefs: prefs,
@@ -530,7 +532,7 @@ void main() {
 
     group('9. dispose', () {
       test('dispose does not throw', () {
-        final disposableRepo = VpnRepository(
+        final disposableRepo = VpnController(
           vpnService: _MockVpnService(),
           serverService: serverService,
           prefs: prefs,
@@ -540,7 +542,7 @@ void main() {
 
       test('isDisposed guard prevents double-notify crash', () async {
         final freshMock = _MockVpnService();
-        final disposableRepo = VpnRepository(
+        final disposableRepo = VpnController(
           vpnService: freshMock,
           serverService: serverService,
           prefs: prefs,

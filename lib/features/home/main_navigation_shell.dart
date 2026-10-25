@@ -6,9 +6,9 @@ import 'package:provider/provider.dart';
 
 import '../../app/theme/app_colors.dart';
 import '../../core/storage/preferences_service.dart';
-import '../../data/repositories/vpn_repository.dart';
 import '../../domain/entities/vpn_connection_state.dart';
 import '../../domain/repositories/connectivity_repository.dart';
+import '../../presentation/controllers/vpn_controller.dart';
 import '../activity/activity_view.dart';
 import '../common/motion.dart';
 import '../servers/servers_view.dart';
@@ -68,7 +68,7 @@ class _MainNavigationShellState extends State<MainNavigationShell>
   Future<void> _autoConnectIfEnabled() async {
     if (!mounted) return;
     final prefs = context.read<PreferencesService>();
-    final vpn = context.read<VpnRepository>();
+    final vpn = context.read<VpnController>();
     if (!prefs.autoConnect ||
         vpn.connectionState != VpnConnectionState.disconnected) {
       return;
@@ -80,7 +80,7 @@ class _MainNavigationShellState extends State<MainNavigationShell>
   }
 
   void _handleConnectivityChange(bool isOnline) {
-    final vpn = context.read<VpnRepository>();
+    final vpn = context.read<VpnController>();
     if (!isOnline) {
       _networkWasLost = true;
       _shouldReconnect =
@@ -103,7 +103,7 @@ class _MainNavigationShellState extends State<MainNavigationShell>
     if (!mounted || _isRecoveringConnection) return;
     _isRecoveringConnection = true;
     try {
-      final vpn = context.read<VpnRepository>();
+      final vpn = context.read<VpnController>();
       if (vpn.connectionState == VpnConnectionState.connected) {
         await vpn.disconnect();
         await Future<void>.delayed(const Duration(milliseconds: 350));

@@ -2,15 +2,16 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:galaxy_vpn/app/theme/app_theme.dart';
+import 'package:galaxy_vpn/core/storage/preferences_service.dart';
+import 'package:galaxy_vpn/data/repositories/auth_repository_impl.dart';
+import 'package:galaxy_vpn/data/repositories/server_repository_impl.dart';
+import 'package:galaxy_vpn/domain/repositories/auth_repository.dart';
+import 'package:galaxy_vpn/domain/repositories/connectivity_repository.dart';
+import 'package:galaxy_vpn/features/splash/splash_view.dart';
+import 'package:galaxy_vpn/presentation/controllers/vpn_controller.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:shieldroute_vpn/app/theme/app_theme.dart';
-import 'package:shieldroute_vpn/core/storage/preferences_service.dart';
-import 'package:shieldroute_vpn/data/repositories/vpn_repository.dart';
-import 'package:shieldroute_vpn/domain/repositories/connectivity_repository.dart';
-import 'package:shieldroute_vpn/features/splash/splash_view.dart';
-import 'package:shieldroute_vpn/services/auth_service.dart';
-import 'package:shieldroute_vpn/services/server_service.dart';
 
 import 'unit/vpn_state_machine_test.dart';
 
@@ -31,20 +32,20 @@ class _MockConnectivityRepository implements ConnectivityRepository {
 
 void main() {
   late PreferencesService prefs;
-  late LocalAuthService auth;
+  late AuthRepositoryImpl auth;
   late MockVpnService mockVpn;
-  late DefaultServerService serverService;
-  late VpnRepository repository;
+  late ServerRepositoryImpl serverService;
+  late VpnController repository;
   late _MockConnectivityRepository connectivity;
 
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
     prefs = await PreferencesService.create();
-    auth = LocalAuthService(prefs);
+    auth = AuthRepositoryImpl(prefs);
     mockVpn = MockVpnService();
-    serverService = DefaultServerService(prefs);
+    serverService = ServerRepositoryImpl(preferencesRepo: prefs);
     connectivity = _MockConnectivityRepository();
-    repository = VpnRepository(
+    repository = VpnController(
       vpnService: mockVpn,
       serverService: serverService,
       prefs: prefs,
@@ -59,9 +60,9 @@ void main() {
     return MultiProvider(
       providers: [
         Provider<PreferencesService>.value(value: prefs),
-        Provider<AuthService>.value(value: auth),
+        Provider<AuthRepository>.value(value: auth),
         Provider<ConnectivityRepository>.value(value: connectivity),
-        ChangeNotifierProvider<VpnRepository>.value(value: repository),
+        ChangeNotifierProvider<VpnController>.value(value: repository),
       ],
       child: MaterialApp(theme: AppTheme.lightTheme, home: const SplashView()),
     );

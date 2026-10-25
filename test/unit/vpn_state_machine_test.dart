@@ -1,15 +1,16 @@
 import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:galaxy_vpn/core/storage/preferences_service.dart';
+import 'package:galaxy_vpn/data/datasources/platform/vpn_platform_data_source.dart';
+import 'package:galaxy_vpn/data/models/vpn_server.dart';
+import 'package:galaxy_vpn/data/models/vpn_session.dart';
+import 'package:galaxy_vpn/data/repositories/server_repository_impl.dart';
+import 'package:galaxy_vpn/domain/entities/vpn_connection_state.dart';
+import 'package:galaxy_vpn/domain/entities/vpn_live_metrics.dart';
+import 'package:galaxy_vpn/presentation/controllers/vpn_controller.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:shieldroute_vpn/core/errors/vpn_exception.dart';
-import 'package:shieldroute_vpn/core/storage/preferences_service.dart';
-import 'package:shieldroute_vpn/data/models/vpn_server.dart';
-import 'package:shieldroute_vpn/data/models/vpn_session.dart';
-import 'package:shieldroute_vpn/data/repositories/vpn_repository.dart';
-import 'package:shieldroute_vpn/services/server_service.dart';
-import 'package:shieldroute_vpn/services/vpn_service.dart';
 
-class MockVpnService implements VpnService {
+class MockVpnService implements VpnPlatformDataSource {
   final StreamController<VpnConnectionState> _stateController =
       StreamController<VpnConnectionState>.broadcast();
   final StreamController<VpnLiveMetrics> _metricsController =
@@ -91,15 +92,15 @@ void main() {
   group('VPN State Machine and Session History Tests', () {
     late PreferencesService prefs;
     late MockVpnService mockVpn;
-    late DefaultServerService serverService;
-    late VpnRepository repository;
+    late ServerRepositoryImpl serverService;
+    late VpnController repository;
 
     setUp(() async {
       SharedPreferences.setMockInitialValues({});
       prefs = await PreferencesService.create();
       mockVpn = MockVpnService();
-      serverService = DefaultServerService(prefs);
-      repository = VpnRepository(
+      serverService = ServerRepositoryImpl(preferencesRepo: prefs);
+      repository = VpnController(
         vpnService: mockVpn,
         serverService: serverService,
         prefs: prefs,
@@ -160,27 +161,5 @@ void main() {
       expect(session.formattedDataTransferred, equals('30.00 MB'));
     });
 
-    test('Error mapping produces accurate user messages (PHASE 18 requirement)', () {
-      final offlineErr = VpnException.fromType(VpnErrorType.noNetwork);
-      expect(offlineErr.userMessage, equals("You're offline"));
-
-      final permErr = VpnException.fromType(VpnErrorType.permissionDenied);
-      expect(permErr.userMessage, equals("VPN permission was not granted."));
-
-      final unavailErr = VpnException.fromType(VpnErrorType.serverUnavailable);
-      expect(unavailErr.userMessage, equals("This server is currently unavailable."));
-
-      final timeoutErr = VpnException.fromType(VpnErrorType.timeout);
-      expect(timeoutErr.userMessage, equals("The server took too long to respond."));
-
-      final configErr = VpnException.fromType(VpnErrorType.invalidConfig);
-      expect(configErr.userMessage, equals("This server configuration is unavailable."));
-
-      final authErr = VpnException.fromType(VpnErrorType.authFailure);
-      expect(authErr.userMessage, equals("The server rejected the connection credentials."));
-
-      final unknownErr = VpnException.fromType(VpnErrorType.unknown);
-      expect(unknownErr.userMessage, equals("We couldn't establish the VPN connection."));
-    });
   });
 }

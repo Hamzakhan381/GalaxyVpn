@@ -51,8 +51,8 @@ class FaqView extends StatelessWidget {
               AnimatedFadeSlide(
                 delayMs: 60,
                 child: _buildFaqItem(
-                  'How does ShieldRoute protect my traffic?',
-                  'ShieldRoute utilizes standard OpenVPN cryptographic encapsulation. Your network packets are wrapped in encrypted datagrams (typically AES-256 or AES-128 with SHA digests) and sent to the relay endpoint before accessing the broader internet.',
+                  'How does Galaxy VPN protect my traffic?',
+                  'Galaxy VPN utilizes standard OpenVPN cryptographic encapsulation. Your network packets are wrapped in encrypted datagrams (typically AES-256 or AES-128 with SHA digests) and sent to the relay endpoint before accessing the broader internet.',
                 ),
               ),
               AnimatedFadeSlide(

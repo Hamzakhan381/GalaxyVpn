@@ -1,5 +1,5 @@
-name: shieldroute_vpn
-description: "A new Flutter project."
+name: galaxy_vpn
+description: "Galaxy VPN - Android Flutter Client."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -31,9 +31,6 @@ dependencies:
   flutter:
     sdk: flutter
 
-  # The following adds the Cupertino Icons font to your application.
-  # Use with the CupertinoIcons class for iOS style icons.
-  cupertino_icons: ^1.0.8
   axevpn_flutter: ^3.1.0
   provider: ^6.1.5+1
   shared_preferences: ^2.5.6
@@ -67,7 +64,6 @@ flutter:
 
   # Assets section
   assets:
-    - assets/images/
     - assets/servers/
 
   # An image asset can refer to one or more resolution-specific "variants", see

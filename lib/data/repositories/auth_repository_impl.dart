@@ -16,8 +16,8 @@ class AuthRepositoryImpl implements AuthRepository {
   void _loadStoredUser() {
     if (_prefs.isAuthenticated) {
       _currentUser = AuthUser(
-        email: _prefs.userEmail ?? 'guest@shieldroute.local',
-        name: _prefs.userName ?? 'ShieldRoute User',
+        email: _prefs.userEmail ?? 'guest@galaxyvpn.local',
+        name: _prefs.userName ?? 'Galaxy VPN User',
         isGuest: _prefs.isGuest,
         createdAt: DateTime.now().subtract(const Duration(days: 7)),
       );
@@ -25,7 +25,7 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   String _hashPassword(String password) {
-    const salt = 'ShieldRoute_Salt_2026';
+    const salt = 'GalaxyVPN_Salt_2026';
     final bytes = utf8.encode('$salt:$password');
     return sha256.convert(bytes).toString();
   }
@@ -107,7 +107,7 @@ class AuthRepositoryImpl implements AuthRepository {
 
   @override
   Future<AuthUser> continueAsGuest() async {
-    const guestEmail = 'guest@shieldroute.internal';
+    const guestEmail = 'guest@galaxyvpn.internal';
     const guestName = 'Academic Guest';
 
     _currentUser = AuthUser(

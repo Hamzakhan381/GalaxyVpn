@@ -1,17 +1,18 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:galaxy_vpn/core/storage/preferences_service.dart';
+import 'package:galaxy_vpn/data/datasources/local/bundled_seed_relays_data_source.dart';
+import 'package:galaxy_vpn/data/datasources/platform/openvpn_platform_data_source.dart';
+import 'package:galaxy_vpn/data/models/vpn_server.dart';
+import 'package:galaxy_vpn/data/repositories/server_repository_impl.dart';
+import 'package:galaxy_vpn/domain/entities/server_sort_option.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:shieldroute_vpn/core/storage/preferences_service.dart';
-import 'package:shieldroute_vpn/data/models/vpn_server.dart';
-import 'package:shieldroute_vpn/data/repositories/bundled_seed_relays.dart';
-import 'package:shieldroute_vpn/services/openvpn_service.dart';
-import 'package:shieldroute_vpn/services/server_service.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('V&V Model — Verification & Validation Suite', () {
     late PreferencesService prefs;
-    late DefaultServerService serverService;
+    late ServerRepositoryImpl serverService;
 
     setUp(() async {
       SharedPreferences.setMockInitialValues({
@@ -20,7 +21,7 @@ void main() {
         'setting_turbo_speed': true,
       });
       prefs = await PreferencesService.create();
-      serverService = DefaultServerService(prefs);
+      serverService = ServerRepositoryImpl(preferencesRepo: prefs);
     });
 
     test('VERIFICATION [V-1]: VpnServer correctly parses and calculates throughput speed', () {
@@ -53,7 +54,7 @@ void main() {
     });
 
     test('VERIFICATION [V-2]: Bundled fallback relays are genuine VPN Gate profiles', () async {
-      final seeds = await BundledSeedRelays.getServers();
+      final seeds = await BundledSeedRelaysDataSource.loadServers();
       expect(seeds.length, greaterThanOrEqualTo(6));
 
       for (final seed in seeds) {
@@ -102,7 +103,7 @@ void main() {
       expect(top.speedMbps, greaterThan(50.0), reason: 'Top best available server should have strong bandwidth');
     });
 
-    test('VERIFICATION [V-5]: OpenVpnService config optimizer injects MTU clamping and low-latency DNS', () {
+    test('VERIFICATION [V-5]: OpenVpnPlatformDataSource config optimizer injects MTU clamping and low-latency DNS', () {
       const rawConfig = '''
 client
 dev tun
@@ -112,7 +113,7 @@ cipher AES-128-CBC
 auth SHA1
 ''';
 
-      final optimized = OpenVpnService.optimizeConfig(rawConfig, turboMode: true);
+      final optimized = OpenVpnPlatformDataSource.optimizeConfig(rawConfig, turboMode: true);
 
       // Verify anti-fragmentation MTU clamping for mobile 4G/5G
       expect(optimized.contains('tun-mtu 1400'), isTrue);
@@ -179,7 +180,7 @@ auth SHA1
           reason: 'High-speed server must exceed 100 Mbps to prevent phone speed degradation');
 
       // Ensure config preparation applies turbo enhancements
-      final readyConfig = OpenVpnService.optimizeConfig(topSpeed.ovpnConfig, turboMode: true);
+      final readyConfig = OpenVpnPlatformDataSource.optimizeConfig(topSpeed.ovpnConfig, turboMode: true);
       expect(readyConfig.contains('mssfix'), isTrue);
       expect(readyConfig.contains('redirect-gateway def1'), isTrue);
       expect(readyConfig.contains('dhcp-option DNS'), isTrue);

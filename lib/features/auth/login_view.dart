@@ -4,7 +4,7 @@ import 'package:provider/provider.dart';
 import '../../app/theme/app_colors.dart';
 import '../../app/theme/app_text_styles.dart';
 import '../../core/storage/preferences_service.dart';
-import '../../services/auth_service.dart';
+import '../../domain/repositories/auth_repository.dart';
 import '../common/cyber_background.dart';
 import '../common/primary_button.dart';
 import '../common/secondary_button.dart';
@@ -45,7 +45,7 @@ class _LoginViewState extends State<LoginView> {
     });
 
     try {
-      final auth = context.read<AuthService>();
+      final auth = context.read<AuthRepository>();
       final prefs = context.read<PreferencesService>();
 
       await auth.login(_emailController.text.trim(), _passwordController.text);

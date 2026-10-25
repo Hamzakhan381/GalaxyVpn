@@ -3,8 +3,8 @@ import '../core/constants/app_constants.dart';
 import 'router.dart';
 import 'theme/app_theme.dart';
 
-class ShieldRouteApp extends StatelessWidget {
-  const ShieldRouteApp({super.key});
+class GalaxyVpnApp extends StatelessWidget {
+  const GalaxyVpnApp({super.key});
 
   @override
   Widget build(BuildContext context) {

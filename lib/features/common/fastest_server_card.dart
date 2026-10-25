@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import '../../app/theme/app_colors.dart';
 import '../../app/theme/app_text_styles.dart';
 import '../../data/models/vpn_server.dart';
-import '../../data/repositories/vpn_repository.dart';
-import '../../services/vpn_service.dart';
+import '../../domain/entities/vpn_connection_state.dart';
+import '../../presentation/controllers/vpn_controller.dart';
 import 'country_badge.dart';
 
 /// Suggests a relay using reported throughput and measured TCP latency where
@@ -17,7 +17,7 @@ import 'country_badge.dart';
 ///  • High-contrast electric cyan action button with spring physics.
 ///  • Periodic subtle shimmer highlight sweeping across the card.
 class FastestServerCard extends StatefulWidget {
-  final VpnRepository vpnRepo;
+  final VpnController vpnRepo;
   final VoidCallback? onConnect;
   final VoidCallback? onServerDetails;
   final bool isCompact;

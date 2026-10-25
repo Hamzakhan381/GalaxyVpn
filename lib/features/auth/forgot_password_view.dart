@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../app/theme/app_colors.dart';
 import '../../app/theme/app_text_styles.dart';
-import '../../services/auth_service.dart';
+import '../../domain/repositories/auth_repository.dart';
 import '../common/cyber_background.dart';
 import '../common/primary_button.dart';
 
@@ -37,7 +37,7 @@ class _ForgotPasswordViewState extends State<ForgotPasswordView> {
     });
 
     try {
-      final auth = context.read<AuthService>();
+      final auth = context.read<AuthRepository>();
       await auth.requestPasswordReset(_emailController.text.trim());
       setState(() => _submitted = true);
     } catch (e) {
@@ -172,10 +172,12 @@ class _ForgotPasswordViewState extends State<ForgotPasswordView> {
                     ),
                   ),
                   validator: (val) {
-                    if (val == null || val.trim().isEmpty)
+                    if (val == null || val.trim().isEmpty) {
                       return 'Please enter your email.';
-                    if (!val.contains('@'))
+                    }
+                    if (!val.contains('@')) {
                       return 'Enter a valid email address.';
+                    }
                     return null;
                   },
                 ),

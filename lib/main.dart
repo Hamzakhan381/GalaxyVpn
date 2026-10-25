@@ -5,12 +5,14 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'app/app.dart';
 import 'core/storage/preferences_service.dart';
-import 'data/repositories/vpn_repository.dart';
+import 'data/datasources/platform/unified_vpn_platform_data_source.dart';
+import 'data/repositories/auth_repository_impl.dart';
+import 'data/repositories/connectivity_repository_impl.dart';
+import 'data/repositories/server_repository_impl.dart';
+import 'domain/repositories/auth_repository.dart';
+import 'domain/repositories/connectivity_repository.dart';
 import 'domain/repositories/preferences_repository.dart';
-import 'services/auth_service.dart';
-import 'services/connectivity_service.dart';
-import 'services/server_service.dart';
-import 'services/unified_vpn_service.dart';
+import 'presentation/controllers/vpn_controller.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -18,56 +20,53 @@ Future<void> main() async {
   // Prevent GoogleFonts from attempting network downloads during startup or offline
   GoogleFonts.config.allowRuntimeFetching = false;
 
-  debugPrint('ShieldRouteApp: main() initializing...');
+  debugPrint('GalaxyVpnApp: main() initializing...');
 
   SharedPreferences sharedPreferences;
   try {
     sharedPreferences = await SharedPreferences.getInstance().timeout(
       const Duration(seconds: 4),
       onTimeout: () {
-        debugPrint('ShieldRouteApp: SharedPreferences timeout - continuing with fallback');
+        debugPrint('GalaxyVpnApp: SharedPreferences timeout - continuing with fallback');
         return SharedPreferences.getInstance();
       },
     );
   } catch (e) {
-    debugPrint('ShieldRouteApp: SharedPreferences init error: $e');
+    debugPrint('GalaxyVpnApp: SharedPreferences init error: $e');
     sharedPreferences = await SharedPreferences.getInstance();
   }
 
   final prefsService = PreferencesService(sharedPreferences);
 
   // Instantiate Clean Architecture platform and domain services
-  final vpnService = UnifiedVpnService(prefs: prefsService);
+  final vpnService = UnifiedVpnPlatformDataSource(prefs: prefsService);
   unawaited(vpnService.initialize().catchError((e) {
-    debugPrint('UnifiedVpnService background init error: $e');
+    debugPrint('UnifiedVpnPlatformDataSource background init error: $e');
   }));
 
-  final serverService = DefaultServerService(prefsService);
-  final authService = LocalAuthService(prefsService);
-  final connectivityService = DefaultConnectivityService();
+  final serverRepository = ServerRepositoryImpl(preferencesRepo: prefsService);
+  final authRepository = AuthRepositoryImpl(prefsService);
+  final connectivityRepository = ConnectivityRepositoryImpl();
 
-  // Instantiate presentation controller & repository
-  final vpnRepository = VpnRepository(
+  // Instantiate presentation controller
+  final vpnController = VpnController(
     vpnService: vpnService,
-    serverService: serverService,
+    serverService: serverRepository,
     prefs: prefsService,
   );
 
-  debugPrint('ShieldRouteApp: calling runApp()...');
+  debugPrint('GalaxyVpnApp: calling runApp()...');
 
   runApp(
     MultiProvider(
       providers: [
         Provider<PreferencesRepository>.value(value: prefsService),
         Provider<PreferencesService>.value(value: prefsService),
-        Provider<AuthRepository>.value(value: authService),
-        Provider<AuthService>.value(value: authService),
-        Provider<ConnectivityRepository>.value(value: connectivityService),
-        Provider<ConnectivityService>.value(value: connectivityService),
-        ChangeNotifierProvider<VpnController>.value(value: vpnRepository),
-        ChangeNotifierProvider<VpnRepository>.value(value: vpnRepository),
+        Provider<AuthRepository>.value(value: authRepository),
+        Provider<ConnectivityRepository>.value(value: connectivityRepository),
+        ChangeNotifierProvider<VpnController>.value(value: vpnController),
       ],
-      child: const ShieldRouteApp(),
+      child: const GalaxyVpnApp(),
     ),
   );
 }

@@ -1,16 +1,16 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:galaxy_vpn/core/storage/preferences_service.dart';
+import 'package:galaxy_vpn/data/datasources/platform/native_vpn_platform_data_source.dart';
+import 'package:galaxy_vpn/data/datasources/platform/unified_vpn_platform_data_source.dart';
+import 'package:galaxy_vpn/data/models/vpn_server.dart';
+import 'package:galaxy_vpn/domain/entities/vpn_connection_state.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:shieldroute_vpn/core/storage/preferences_service.dart';
-import 'package:shieldroute_vpn/data/models/vpn_server.dart';
-import 'package:shieldroute_vpn/services/native_vpn_service.dart';
-import 'package:shieldroute_vpn/services/unified_vpn_service.dart';
-import 'package:shieldroute_vpn/services/vpn_service.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   late PreferencesService prefs;
-  late UnifiedVpnService unifiedService;
+  late UnifiedVpnPlatformDataSource unifiedService;
 
   final testServer = VpnServer(
     id: 'test_node_01',
@@ -31,14 +31,14 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     final sp = await SharedPreferences.getInstance();
     prefs = PreferencesService(sp);
-    unifiedService = UnifiedVpnService(prefs: prefs);
+    unifiedService = UnifiedVpnPlatformDataSource(prefs: prefs);
   });
 
   tearDown(() {
     unifiedService.dispose();
   });
 
-  group('UnifiedVpnService & NativeVpnService Suite', () {
+  group('UnifiedVpnPlatformDataSource & NativeVpnPlatformDataSource Suite', () {
     test('initial state is disconnected', () {
       expect(unifiedService.currentState, equals(VpnConnectionState.disconnected));
       expect(unifiedService.currentMetrics.byteIn, equals(0));
@@ -79,8 +79,8 @@ void main() {
       expect(unifiedService.currentState, equals(VpnConnectionState.disconnected));
     });
 
-    test('NativeVpnService standalone connects and emits metrics', () async {
-      final nativeService = NativeVpnService();
+    test('NativeVpnPlatformDataSource standalone connects and emits metrics', () async {
+      final nativeService = NativeVpnPlatformDataSource();
       await nativeService.initialize();
 
       await nativeService.connect(testServer);

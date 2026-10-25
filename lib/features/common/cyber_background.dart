@@ -3,7 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../../app/theme/app_colors.dart';
-import '../../services/vpn_service.dart';
+import '../../domain/entities/vpn_connection_state.dart';
 import 'motion.dart';
 
 /// Premium dark background featuring deep obsidian black (#090909), subtle

@@ -1,15 +1,17 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:galaxy_vpn/core/storage/preferences_service.dart';
+import 'package:galaxy_vpn/data/datasources/platform/vpn_platform_data_source.dart';
+import 'package:galaxy_vpn/data/models/vpn_server.dart';
+import 'package:galaxy_vpn/data/repositories/server_repository_impl.dart';
+import 'package:galaxy_vpn/domain/entities/vpn_connection_state.dart';
+import 'package:galaxy_vpn/domain/entities/vpn_live_metrics.dart';
+import 'package:galaxy_vpn/presentation/controllers/vpn_controller.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:shieldroute_vpn/core/storage/preferences_service.dart';
-import 'package:shieldroute_vpn/data/models/vpn_server.dart';
-import 'package:shieldroute_vpn/data/repositories/vpn_repository.dart';
-import 'package:shieldroute_vpn/services/server_service.dart';
-import 'package:shieldroute_vpn/services/vpn_service.dart';
 
 // ─── Controllable mock for openvpn_service simulation tests ────────────────
-class _SimulatedVpnService implements VpnService {
+class _SimulatedVpnService implements VpnPlatformDataSource {
   final StreamController<VpnConnectionState> _stateCtrl =
       StreamController<VpnConnectionState>.broadcast();
   final StreamController<VpnLiveMetrics> _metricsCtrl =
@@ -114,15 +116,15 @@ void main() {
   group('VPN State Machine — Integration Tests', () {
     late PreferencesService prefs;
     late _SimulatedVpnService vpn;
-    late DefaultServerService serverService;
-    late VpnRepository repo;
+    late ServerRepositoryImpl serverService;
+    late VpnController repo;
 
     setUp(() async {
       SharedPreferences.setMockInitialValues({});
       prefs = await PreferencesService.create();
       vpn = _SimulatedVpnService();
-      serverService = DefaultServerService(prefs);
-      repo = VpnRepository(
+      serverService = ServerRepositoryImpl(preferencesRepo: prefs);
+      repo = VpnController(
         vpnService: vpn,
         serverService: serverService,
         prefs: prefs,
@@ -286,7 +288,7 @@ void main() {
       test('disconnect called while disconnected does not throw', () async {
         // Use a fresh isolated repo to avoid stream-closed from shared tearDown
         final freshVpn = _SimulatedVpnService();
-        final freshRepo = VpnRepository(
+        final freshRepo = VpnController(
           vpnService: freshVpn,
           serverService: serverService,
           prefs: prefs,

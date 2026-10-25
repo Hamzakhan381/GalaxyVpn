@@ -26,7 +26,7 @@
                 android:value="vpn" />
         </service>
         <service
-            android:name=".ShieldRouteVpnService"
+            android:name=".GalaxyVpnService"
             android:foregroundServiceType="specialUse"
             android:exported="false"
             android:permission="android.permission.BIND_VPN_SERVICE">

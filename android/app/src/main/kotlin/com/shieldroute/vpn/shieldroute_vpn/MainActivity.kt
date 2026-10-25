@@ -11,8 +11,8 @@ import io.flutter.plugin.common.MethodChannel
 class MainActivity : FlutterActivity() {
 
     companion object {
-        private const val METHOD_CHANNEL = "com.shieldroute.vpn/native_engine"
-        private const val EVENT_CHANNEL = "com.shieldroute.vpn/events"
+        private const val METHOD_CHANNEL = "com.galaxyvpn/native_engine"
+        private const val EVENT_CHANNEL = "com.galaxyvpn/events"
         private const val VPN_REQUEST_CODE = 1024
     }
 
@@ -24,11 +24,11 @@ class MainActivity : FlutterActivity() {
         EventChannel(flutterEngine.dartExecutor.binaryMessenger, EVENT_CHANNEL)
             .setStreamHandler(object : EventChannel.StreamHandler {
                 override fun onListen(arguments: Any?, events: EventChannel.EventSink?) {
-                    ShieldRouteVpnService.eventSink = events
+                    GalaxyVpnService.eventSink = events
                 }
 
                 override fun onCancel(arguments: Any?) {
-                    ShieldRouteVpnService.eventSink = null
+                    GalaxyVpnService.eventSink = null
                 }
             })
 
@@ -52,14 +52,14 @@ class MainActivity : FlutterActivity() {
                             result.error("PERMISSION", "VPN permission has not been granted", null)
                             return@setMethodCallHandler
                         }
-                        val intent = Intent(this, ShieldRouteVpnService::class.java)
-                            .setAction(ShieldRouteVpnService.ACTION_CONNECT)
-                            .putExtra(ShieldRouteVpnService.EXTRA_HOSTNAME, call.argument<String>("hostname"))
-                            .putExtra(ShieldRouteVpnService.EXTRA_ADDRESS, call.argument<String>("address"))
-                            .putExtra(ShieldRouteVpnService.EXTRA_PORT, call.argument<Int>("port") ?: 443)
-                            .putExtra(ShieldRouteVpnService.EXTRA_USERNAME, call.argument<String>("username"))
-                            .putExtra(ShieldRouteVpnService.EXTRA_PASSWORD, call.argument<String>("password"))
-                            .putExtra(ShieldRouteVpnService.EXTRA_SERVER_NAME, call.argument<String>("serverName"))
+                        val intent = Intent(this, GalaxyVpnService::class.java)
+                            .setAction(GalaxyVpnService.ACTION_CONNECT)
+                            .putExtra(GalaxyVpnService.EXTRA_HOSTNAME, call.argument<String>("hostname"))
+                            .putExtra(GalaxyVpnService.EXTRA_ADDRESS, call.argument<String>("address"))
+                            .putExtra(GalaxyVpnService.EXTRA_PORT, call.argument<Int>("port") ?: 443)
+                            .putExtra(GalaxyVpnService.EXTRA_USERNAME, call.argument<String>("username"))
+                            .putExtra(GalaxyVpnService.EXTRA_PASSWORD, call.argument<String>("password"))
+                            .putExtra(GalaxyVpnService.EXTRA_SERVER_NAME, call.argument<String>("serverName"))
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                             startForegroundService(intent)
                         } else {
@@ -68,15 +68,15 @@ class MainActivity : FlutterActivity() {
                         result.success(true)
                     }
                     "disconnect" -> {
-                        if (ShieldRouteVpnService.currentState != "disconnected") {
+                        if (GalaxyVpnService.currentState != "disconnected") {
                             startService(
-                                Intent(this, ShieldRouteVpnService::class.java)
-                                    .setAction(ShieldRouteVpnService.ACTION_DISCONNECT),
+                                Intent(this, GalaxyVpnService::class.java)
+                                    .setAction(GalaxyVpnService.ACTION_DISCONNECT),
                             )
                         }
                         result.success(true)
                     }
-                    "getState" -> result.success(ShieldRouteVpnService.currentState)
+                    "getState" -> result.success(GalaxyVpnService.currentState)
                     else -> result.notImplemented()
                 }
             }

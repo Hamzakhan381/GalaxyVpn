@@ -47,14 +47,14 @@ class TermsView extends StatelessWidget {
                 delay: const Duration(milliseconds: 100),
                 child: _buildParagraph(
                   '1. Educational Nature',
-                  'ShieldRoute VPN is developed strictly as a university Mobile App Development academic project for learning Android networking, Flutter state management, and OpenVPN encapsulation protocols.',
+                  'Galaxy VPN is developed strictly as a university Mobile App Development academic project for learning Android networking, Flutter state management, and OpenVPN encapsulation protocols.',
                 ),
               ),
               AnimatedFadeSlide(
                 delay: const Duration(milliseconds: 160),
                 child: _buildParagraph(
                   '2. Public Relay Disclaimer',
-                  'Public relays are operated by voluntary academic and community hosts. ShieldRoute does not own or maintain external relay infrastructure and makes no guarantee of 100% uptime, specific bandwidth, or persistent endpoint availability.',
+                  'Public relays are operated by voluntary academic and community hosts. Galaxy VPN does not own or maintain external relay infrastructure and makes no guarantee of 100% uptime, specific bandwidth, or persistent endpoint availability.',
                 ),
               ),
               AnimatedFadeSlide(
@@ -176,21 +176,21 @@ class PrivacyPolicyView extends StatelessWidget {
                 delay: const Duration(milliseconds: 100),
                 child: _buildParagraph(
                   'Information Collection',
-                  'ShieldRoute collects zero personal browsing history, search queries, or transmitted content. When you run the application, local configurations (favorite servers, session history counters) are stored solely on your device.',
+                  'Galaxy VPN collects zero personal browsing history, search queries, or transmitted content. When you run the application, local configurations (favorite servers, session history counters) are stored solely on your device.',
                 ),
               ),
               AnimatedFadeSlide(
                 delay: const Duration(milliseconds: 160),
                 child: _buildParagraph(
                   'Network Routing',
-                  'Upon initiating a VPN connection, your IP packets are encapsulated into OpenVPN format and relayed directly through the target gateway. ShieldRoute servers do not intermediate or decrypt this connection.',
+                  'Upon initiating a VPN connection, your IP packets are encapsulated into OpenVPN format and relayed directly through the target gateway. Galaxy VPN servers do not intermediate or decrypt this connection.',
                 ),
               ),
               AnimatedFadeSlide(
                 delay: const Duration(milliseconds: 220),
                 child: _buildParagraph(
                   'Analytics & Third Parties',
-                  'ShieldRoute incorporates zero third-party advertising SDKs, behavioral analytics trackers, or user profiling tools.',
+                  'Galaxy VPN incorporates zero third-party advertising SDKs, behavioral analytics trackers, or user profiling tools.',
                 ),
               ),
               AnimatedFadeSlide(

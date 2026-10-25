@@ -39,7 +39,7 @@ class PrivacyCenterView extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'ShieldRoute VPN is designed with transparency and academic integrity. We explicitly disclose how network traffic and local metadata are handled.',
+                      'Galaxy VPN is designed with transparency and academic integrity. We explicitly disclose how network traffic and local metadata are handled.',
                       style: AppTextStyles.bodyMd.copyWith(
                         color: AppColors.secondaryText,
                       ),
@@ -60,7 +60,7 @@ class PrivacyCenterView extends StatelessWidget {
                 delayMs: 120,
                 child: _buildSection(
                   title: '2. What We DO NOT Inspect',
-                  content: 'ShieldRoute never performs Deep Packet Inspection (DPI), DNS sniffing, credential harvesting, or browsing history monitoring. We do not insert advertisements or inject third-party scripts into your traffic.',
+                  content: 'Galaxy VPN never performs Deep Packet Inspection (DPI), DNS sniffing, credential harvesting, or browsing history monitoring. We do not insert advertisements or inject third-party scripts into your traffic.',
                 ),
               ),
               const SizedBox(height: 16),
@@ -76,7 +76,7 @@ class PrivacyCenterView extends StatelessWidget {
                 delayMs: 240,
                 child: _buildSection(
                   title: '4. Public Relay Infrastructure',
-                  content: 'ShieldRoute discovers community relays provided by university networks and research volunteers. While traffic between your device and the relay is encrypted, relay operators retain standard server connection logs according to their regional laws.',
+                  content: 'Galaxy VPN discovers community relays provided by university networks and research volunteers. While traffic between your device and the relay is encrypted, relay operators retain standard server connection logs according to their regional laws.',
                 ),
               ),
               const SizedBox(height: 16),

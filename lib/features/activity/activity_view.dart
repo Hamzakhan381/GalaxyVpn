@@ -5,17 +5,17 @@ import 'package:provider/provider.dart';
 import '../../app/theme/app_colors.dart';
 import '../../app/theme/app_text_styles.dart';
 import '../../data/models/vpn_session.dart';
-import '../../data/repositories/vpn_repository.dart';
+import '../../presentation/controllers/vpn_controller.dart';
 import '../common/cyber_background.dart';
-import '../common/motion.dart';
 import '../common/empty_state.dart';
 import '../common/metric_card.dart';
+import '../common/motion.dart';
 import 'session_details_sheet.dart';
 
 class ActivityView extends StatelessWidget {
   const ActivityView({super.key});
 
-  void _confirmClearHistory(BuildContext context, VpnRepository vpnRepo) {
+  void _confirmClearHistory(BuildContext context, VpnController vpnRepo) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -63,7 +63,7 @@ class ActivityView extends StatelessWidget {
   Widget build(BuildContext context) {
     final dateFormat = DateFormat('MMM d • HH:mm');
 
-    return Consumer<VpnRepository>(
+    return Consumer<VpnController>(
       builder: (context, vpnRepo, _) {
         final sessions = vpnRepo.sessions;
 

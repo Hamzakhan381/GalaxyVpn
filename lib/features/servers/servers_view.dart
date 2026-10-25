@@ -5,8 +5,8 @@ import 'package:provider/provider.dart';
 import '../../app/theme/app_colors.dart';
 import '../../app/theme/app_text_styles.dart';
 import '../../data/models/vpn_server.dart';
-import '../../data/repositories/vpn_repository.dart';
-import '../../services/server_service.dart';
+import '../../domain/entities/server_sort_option.dart';
+import '../../presentation/controllers/vpn_controller.dart';
 import '../common/cyber_background.dart';
 import '../common/empty_state.dart';
 import '../common/fastest_server_card.dart';
@@ -42,7 +42,7 @@ class _ServersViewState extends State<ServersView> {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<VpnRepository>(
+    return Consumer<VpnController>(
       builder: (context, vpnRepo, _) {
         if (vpnRepo.isLoadingServers && vpnRepo.allServers.isEmpty) {
           return const Scaffold(
@@ -430,7 +430,7 @@ class _ServersViewState extends State<ServersView> {
 
   void _showServerDetails(
     BuildContext context,
-    VpnRepository vpnRepo,
+    VpnController vpnRepo,
     VpnServer server,
   ) {
     showModalBottomSheet(
