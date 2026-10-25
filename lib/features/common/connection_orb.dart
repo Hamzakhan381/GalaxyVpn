@@ -35,8 +35,6 @@ class _ConnectionOrbState extends State<ConnectionOrb>
   late final AnimationController _breathCtrl;
   // State transition interpolation
   late final AnimationController _transitionCtrl;
-  // Outward expansion ripple when VPN connects successfully
-  late final AnimationController _rippleCtrl;
 
   bool _pressed = false;
 
@@ -63,11 +61,6 @@ class _ConnectionOrbState extends State<ConnectionOrb>
       value: 1.0,
     );
 
-    _rippleCtrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 900),
-    );
-
     if (!_isTestEnvironment) {
       _breathCtrl.repeat(reverse: true);
       _updateAnimations(widget.state);
@@ -79,14 +72,11 @@ class _ConnectionOrbState extends State<ConnectionOrb>
     super.didUpdateWidget(oldWidget);
     if (oldWidget.state != widget.state) {
       _transitionCtrl.forward(from: 0.0);
-      _updateAnimations(widget.state, oldState: oldWidget.state);
+      _updateAnimations(widget.state);
     }
   }
 
-  void _updateAnimations(
-    VpnConnectionState state, {
-    VpnConnectionState? oldState,
-  }) {
+  void _updateAnimations(VpnConnectionState state) {
     if (_isTestEnvironment) return;
 
     final isConnecting =
@@ -101,14 +91,6 @@ class _ConnectionOrbState extends State<ConnectionOrb>
         _spinCtrl.reset();
       }
     }
-
-    // Trigger success expansion ripple when transitioning to connected
-    if (state == VpnConnectionState.connected &&
-        (oldState == VpnConnectionState.connecting ||
-            oldState == VpnConnectionState.checking ||
-            oldState == VpnConnectionState.disconnected)) {
-      _rippleCtrl.forward(from: 0.0);
-    }
   }
 
   @override
@@ -116,7 +98,6 @@ class _ConnectionOrbState extends State<ConnectionOrb>
     _spinCtrl.dispose();
     _breathCtrl.dispose();
     _transitionCtrl.dispose();
-    _rippleCtrl.dispose();
     super.dispose();
   }
 
@@ -161,9 +142,7 @@ class _ConnectionOrbState extends State<ConnectionOrb>
               clipBehavior: Clip.none,
               children: [
                 // ── 0. Twinkling galaxy star field while connected ─────────────
-                Positioned.fill(
-                  child: GalaxyStarfield(active: isConnected),
-                ),
+                Positioned.fill(child: GalaxyStarfield(active: isConnected)),
 
                 // ── 1. Circular Outer Indicator Ring & Gyroscopic Animations ──
                 Positioned.fill(
@@ -171,7 +150,6 @@ class _ConnectionOrbState extends State<ConnectionOrb>
                     animation: Listenable.merge([
                       _spinCtrl,
                       _breathCtrl,
-                      _rippleCtrl,
                       _transitionCtrl,
                     ]),
                     builder: (context, _) {
@@ -180,7 +158,6 @@ class _ConnectionOrbState extends State<ConnectionOrb>
                           state: state,
                           spinProgress: _spinCtrl.value,
                           breathProgress: _breathCtrl.value,
-                          rippleProgress: _rippleCtrl.value,
                           isConnecting: isConnecting,
                           isConnected: isConnected,
                           isError: isError,
@@ -215,7 +192,7 @@ class _ConnectionOrbState extends State<ConnectionOrb>
                           color: AppColors.connectedStatus.withValues(
                             alpha: _isTestEnvironment
                                 ? 0.25
-                                : (0.16 + (0.12 * _breathCtrl.value)),
+                                : (0.20 + (0.04 * _breathCtrl.value)),
                           ),
                           blurRadius: 20,
                           spreadRadius: 2,
@@ -301,7 +278,6 @@ class _ConnectionRingPainter extends CustomPainter {
   final VpnConnectionState state;
   final double spinProgress;
   final double breathProgress;
-  final double rippleProgress;
   final bool isConnecting;
   final bool isConnected;
   final bool isError;
@@ -311,7 +287,6 @@ class _ConnectionRingPainter extends CustomPainter {
     required this.state,
     required this.spinProgress,
     required this.breathProgress,
-    required this.rippleProgress,
     required this.isConnecting,
     required this.isConnected,
     required this.isError,
@@ -448,21 +423,11 @@ class _ConnectionRingPainter extends CustomPainter {
         Paint()..color = AppColors.secondaryText.withValues(alpha: 0.70),
       );
     } else if (isConnected) {
-      // 3. Connected State: Success Ripple, Breathing Ring, Cardinal Reticles & Security Brackets
+      // 3. Connected State: Steady Ring, Cardinal Reticles & Security Brackets
+      // (the connect celebration lives in GalaxyStarfield's green star burst)
 
-      // 3a. Success expansion ripple (plays when connection completes)
-      if (rippleProgress > 0.0 && rippleProgress < 1.0) {
-        final rippleR = 73.0 + (ringRadius - 73.0 + 36.0) * rippleProgress;
-        final rippleAlpha = (1.0 - rippleProgress) * 0.45;
-        final ripplePaint = Paint()
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 1.8 * (1.0 - rippleProgress * 0.5)
-          ..color = AppColors.connectedStatus.withValues(alpha: rippleAlpha);
-        canvas.drawCircle(center, rippleR, ripplePaint);
-      }
-
-      // 3b. Breathing green status ring
-      final pulseAlpha = 0.60 + (0.40 * breathProgress);
+      // 3a. Green status ring with a faint shimmer rather than a blink
+      final pulseAlpha = 0.82 + (0.10 * breathProgress);
       final activePaint = Paint()
         ..color = AppColors.connectedStatus.withValues(alpha: pulseAlpha)
         ..style = PaintingStyle.stroke
@@ -471,14 +436,12 @@ class _ConnectionRingPainter extends CustomPainter {
 
       // Outer faint harmonic aura ring
       final auraPaint = Paint()
-        ..color = AppColors.connectedStatus.withValues(
-          alpha: 0.12 * breathProgress,
-        )
+        ..color = AppColors.connectedStatus.withValues(alpha: 0.08)
         ..style = PaintingStyle.stroke
         ..strokeWidth = 1.0;
       canvas.drawCircle(center, ringRadius + 6, auraPaint);
 
-      // 3c. 4 Precision Cardinal Anchor Ticks (crosshair lock)
+      // 3b. 4 Precision Cardinal Anchor Ticks (crosshair lock)
       final tickPaint = Paint()
         ..color = AppColors.connectedStatus
         ..strokeWidth = 2.0
@@ -494,7 +457,7 @@ class _ConnectionRingPainter extends CustomPainter {
         );
       }
 
-      // 3d. Cardinal Corner Brackets [ ] locking the secure perimeter
+      // 3c. Cardinal Corner Brackets [ ] locking the secure perimeter
       final bracketPaint = Paint()
         ..color = AppColors.connectedStatus.withValues(alpha: 0.6)
         ..style = PaintingStyle.stroke
@@ -568,6 +531,5 @@ class _ConnectionRingPainter extends CustomPainter {
   bool shouldRepaint(_ConnectionRingPainter old) =>
       old.state != state ||
       old.spinProgress != spinProgress ||
-      old.breathProgress != breathProgress ||
-      old.rippleProgress != rippleProgress;
+      old.breathProgress != breathProgress;
 }

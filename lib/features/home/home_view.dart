@@ -32,12 +32,6 @@ class HomeView extends StatefulWidget {
 class _HomeViewState extends State<HomeView> with TickerProviderStateMixin {
   final ScrollController _scroll = ScrollController();
 
-  /// One-shot green shockwave played when the tunnel comes up.
-  late final AnimationController _celebrate = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 1100),
-  );
-
   /// Horizontal shake for the error banner when a connection fails.
   late final AnimationController _shake = AnimationController(
     vsync: this,
@@ -63,7 +57,6 @@ class _HomeViewState extends State<HomeView> with TickerProviderStateMixin {
 
     if (state == VpnConnectionState.connected) {
       HapticFeedback.heavyImpact();
-      if (!Motion.isReduced(context)) _celebrate.forward(from: 0);
     } else if (state == VpnConnectionState.error) {
       HapticFeedback.vibrate();
       if (!Motion.isReduced(context)) _shake.forward(from: 0);
@@ -74,7 +67,6 @@ class _HomeViewState extends State<HomeView> with TickerProviderStateMixin {
   void dispose() {
     _vpnRepo.removeListener(_onVpnChanged);
     _scroll.dispose();
-    _celebrate.dispose();
     _shake.dispose();
     super.dispose();
   }
@@ -160,7 +152,6 @@ class _HomeViewState extends State<HomeView> with TickerProviderStateMixin {
                         beginScale: 0.82,
                         child: _OrbStage(
                           scroll: _scroll,
-                          celebrate: _celebrate,
                           child: ConnectionOrb(
                             state: state,
                             connectingCountry: selectedServer?.country,
@@ -1496,26 +1487,21 @@ class _AppBarShield extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// _OrbStage  –  Scroll parallax + connect celebration around the orb
+// _OrbStage  –  Scroll parallax around the orb
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _OrbStage extends StatelessWidget {
   final ScrollController scroll;
-  final Animation<double> celebrate;
   final Widget child;
 
-  const _OrbStage({
-    required this.scroll,
-    required this.celebrate,
-    required this.child,
-  });
+  const _OrbStage({required this.scroll, required this.child});
 
   @override
   Widget build(BuildContext context) {
     final reduced = Motion.isReduced(context);
 
     return AnimatedBuilder(
-      animation: Listenable.merge([scroll, celebrate]),
+      animation: scroll,
       child: child,
       builder: (context, child) {
         final offset = scroll.hasClients ? scroll.offset : 0.0;
@@ -1534,78 +1520,14 @@ class _OrbStage extends StatelessWidget {
           }
         }
 
-        return Stack(
-          alignment: Alignment.center,
-          clipBehavior: Clip.none,
-          children: [
-            Positioned.fill(
-              child: IgnorePointer(
-                child: CustomPaint(
-                  painter: _CelebrationPainter(progress: celebrate.value),
-                ),
-              ),
-            ),
-            Transform.translate(
-              offset: Offset(0, shift),
-              child: Transform.scale(
-                scale: scale,
-                child: Opacity(opacity: opacity, child: child),
-              ),
-            ),
-          ],
+        return Transform.translate(
+          offset: Offset(0, shift),
+          child: Transform.scale(
+            scale: scale,
+            child: Opacity(opacity: opacity, child: child),
+          ),
         );
       },
     );
   }
-}
-
-/// Green shockwave rings and radiating sparks fired once on connect.
-class _CelebrationPainter extends CustomPainter {
-  final double progress;
-
-  _CelebrationPainter({required this.progress});
-
-  static const int _sparkCount = 14;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    if (progress <= 0 || progress >= 1) return;
-    final c = size.center(Offset.zero);
-    final base = size.shortestSide * 0.36;
-
-    for (int i = 0; i < 3; i++) {
-      final t = ((progress - i * 0.14) / 0.72).clamp(0.0, 1.0);
-      if (t <= 0 || t >= 1) continue;
-      final eased = Curves.easeOutCubic.transform(t);
-      canvas.drawCircle(
-        c,
-        base * (1 + 1.3 * eased),
-        Paint()
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 3 * (1 - t) + 0.5
-          ..color = AppColors.connectedStatus.withValues(alpha: 0.6 * (1 - t)),
-      );
-    }
-
-    final sparkT = Curves.easeOutCubic.transform(progress);
-    final sparkPaint = Paint()
-      ..strokeCap = StrokeCap.round
-      ..strokeWidth = 2
-      ..color = AppColors.connectedStatus.withValues(
-        alpha: 0.8 * (1 - progress),
-      );
-    for (int i = 0; i < _sparkCount; i++) {
-      final a = i * 2 * math.pi / _sparkCount + 0.2;
-      final dir = Offset(math.cos(a), math.sin(a));
-      final start = base * (1.0 + 1.1 * sparkT);
-      canvas.drawLine(
-        c + dir * start,
-        c + dir * (start + 12 * (1 - progress) + 2),
-        sparkPaint,
-      );
-    }
-  }
-
-  @override
-  bool shouldRepaint(_CelebrationPainter old) => old.progress != progress;
 }
