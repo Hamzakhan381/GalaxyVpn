@@ -151,6 +151,24 @@ class PreferencesLocalDataSource {
   Future<bool> setKillSwitch(bool val) =>
       _prefs.setBool(AppConstants.keyKillSwitch, val);
 
+  bool get ipRotationEnabled =>
+      _prefs.getBool(AppConstants.keyIpRotation) ?? false;
+
+  Future<bool> setIpRotationEnabled(bool val) =>
+      _prefs.setBool(AppConstants.keyIpRotation, val);
+
+  int get ipRotationMinutes =>
+      _prefs.getInt(AppConstants.keyIpRotationMinutes) ?? 5;
+
+  Future<bool> setIpRotationMinutes(int minutes) =>
+      _prefs.setInt(AppConstants.keyIpRotationMinutes, minutes);
+
+  bool get ipRotationSameCountry =>
+      _prefs.getBool(AppConstants.keyIpRotationSameCountry) ?? false;
+
+  Future<bool> setIpRotationSameCountry(bool val) =>
+      _prefs.setBool(AppConstants.keyIpRotationSameCountry, val);
+
   // Sessions History
   List<Map<String, dynamic>> getSessionHistoryJson() {
     final raw = _prefs.getString(AppConstants.keySessionsHistory);

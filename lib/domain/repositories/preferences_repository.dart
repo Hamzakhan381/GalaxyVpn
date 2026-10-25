@@ -57,6 +57,17 @@ abstract class PreferencesRepository {
   bool get killSwitch;
   Future<bool> setKillSwitch(bool val);
 
+  /// Periodically reconnect to the fastest relay with a different IP.
+  bool get ipRotationEnabled;
+  Future<bool> setIpRotationEnabled(bool val);
+
+  int get ipRotationMinutes;
+  Future<bool> setIpRotationMinutes(int minutes);
+
+  /// Rotate only between relays in the current country.
+  bool get ipRotationSameCountry;
+  Future<bool> setIpRotationSameCountry(bool val);
+
   // Sessions history (raw JSON maps)
   List<Map<String, dynamic>> getSessionHistoryJson();
   Future<void> saveSessionHistoryJson(List<Map<String, dynamic>> sessions);

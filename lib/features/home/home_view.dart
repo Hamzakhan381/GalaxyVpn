@@ -15,6 +15,7 @@ import '../common/connection_status_badge.dart';
 import '../common/country_badge.dart';
 import '../common/cyber_background.dart';
 import '../common/fastest_server_card.dart';
+import '../common/ip_rotation_card.dart';
 import '../common/motion.dart';
 import '../common/secondary_button.dart';
 import '../servers/server_details_sheet.dart';
@@ -56,7 +57,9 @@ class _HomeViewState extends State<HomeView> with TickerProviderStateMixin {
     if (!mounted) return;
 
     if (state == VpnConnectionState.connected) {
-      HapticFeedback.heavyImpact();
+      // Automatic IP changes reconnect every few minutes; only buzz when the
+      // user started the connection.
+      if (!_vpnRepo.connectedByRotation) HapticFeedback.heavyImpact();
     } else if (state == VpnConnectionState.error) {
       HapticFeedback.vibrate();
       if (!Motion.isReduced(context)) _shake.forward(from: 0);
@@ -80,7 +83,15 @@ class _HomeViewState extends State<HomeView> with TickerProviderStateMixin {
   Widget build(BuildContext context) {
     return Consumer<VpnController>(
       builder: (context, vpnRepo, _) {
-        final state = vpnRepo.connectionState;
+        final rawState = vpnRepo.connectionState;
+        // While IP rotation swaps relays the tunnel is briefly down: show it
+        // as connecting to the next relay rather than as unprotected.
+        final state =
+            vpnRepo.isRotatingIp &&
+                rawState != VpnConnectionState.connected &&
+                rawState != VpnConnectionState.error
+            ? VpnConnectionState.connecting
+            : rawState;
         final selectedServer = vpnRepo.selectedServer;
         final metrics = vpnRepo.liveMetrics;
         final isConnected = state == VpnConnectionState.connected;
@@ -177,7 +188,7 @@ class _HomeViewState extends State<HomeView> with TickerProviderStateMixin {
                         duration: Motion.medium,
                         curve: Curves.easeOutCubic,
                         alignment: Alignment.topCenter,
-                        child: isConnected
+                        child: isConnected || vpnRepo.isRotatingIp
                             ? const SizedBox(width: double.infinity)
                             : AnimatedFadeSlide(
                                 delayMs: Motion.staggerStepMs * 3,
@@ -1225,6 +1236,11 @@ class _ConnectedMetricsPanelState extends State<_ConnectedMetricsPanel>
 
             // ── Exit node card ────────────────────────────────────────────
             _buildExitNodeCard(),
+
+            const SizedBox(height: 12),
+
+            // ── Automatic IP rotation ─────────────────────────────────────
+            const IpRotationCard(),
 
             const SizedBox(height: 20),
 

@@ -74,6 +74,16 @@ class VpnController extends ChangeNotifier {
   DateTime? _sessionStartTime;
   String? _activeSessionId;
 
+  // IP rotation: while connected, periodically move to the fastest relay
+  // with a different address.
+  static const List<int> ipRotationIntervals = [1, 3, 5, 10, 15, 30];
+  static const int _recentRotationLimit = 4;
+  Timer? _rotationTimer;
+  DateTime? _nextRotationAt;
+  bool _rotationInProgress = false;
+  bool _connectedByRotation = false;
+  final List<String> _recentRotationHosts = [];
+
   late StreamSubscription<VpnConnectionState> _stateSub;
   late StreamSubscription<VpnLiveMetrics> _metricsSub;
 
@@ -114,6 +124,18 @@ class VpnController extends ChangeNotifier {
   DateTime? get lastFastestDetectionTime => _lastFastestDetectionTime;
   List<VpnServer> get allServers => _allServers;
   List<VpnServer> get countryServers => _countryServers;
+  bool get ipRotationEnabled => prefs.ipRotationEnabled;
+  int get ipRotationMinutes => prefs.ipRotationMinutes;
+  bool get ipRotationSameCountry => prefs.ipRotationSameCountry;
+
+  /// When the next automatic IP change is due, or null when none is pending.
+  DateTime? get nextRotationAt => _nextRotationAt;
+
+  /// True while rotation is swapping relays (the tunnel is briefly down).
+  bool get isRotatingIp => _rotationInProgress;
+
+  /// Whether the current connection came from an automatic IP change.
+  bool get connectedByRotation => _connectedByRotation;
   List<VpnSession> get sessions => List.unmodifiable(_sessions);
   bool get isLoadingServers => _isLoadingServers;
   String? get serverLoadError => _serverLoadError;
@@ -188,6 +210,7 @@ class VpnController extends ChangeNotifier {
     } else if (state == VpnConnectionState.error) {
       _maybeFailover();
     }
+    _updateRotation(state);
     if (state == VpnConnectionState.connected && _sessionStartTime == null) {
       _sessionStartTime = DateTime.now();
       _activeSessionId = const Uuid().v4();
@@ -489,7 +512,126 @@ class VpnController extends ChangeNotifier {
 
   Future<void> disconnect() async {
     _failoverActive = false;
+    _rotationInProgress = false;
+    _cancelRotation();
     await _disconnectVpnUseCase();
+  }
+
+  Future<void> setIpRotationEnabled(bool enabled) async {
+    await prefs.setIpRotationEnabled(enabled);
+    _scheduleRotation();
+    notifyListeners();
+  }
+
+  Future<void> setIpRotationMinutes(int minutes) async {
+    await prefs.setIpRotationMinutes(minutes);
+    _scheduleRotation();
+    notifyListeners();
+  }
+
+  Future<void> setIpRotationSameCountry(bool sameCountry) async {
+    await prefs.setIpRotationSameCountry(sameCountry);
+    notifyListeners();
+  }
+
+  /// Switches now to the fastest relay with a different IP. Does nothing
+  /// unless connected; when no other relay qualifies it retries next interval.
+  Future<void> rotateIpNow() async {
+    if (connectionState != VpnConnectionState.connected ||
+        _rotationInProgress) {
+      return;
+    }
+    final next = _nextRotationServer();
+    if (next == null) {
+      _scheduleRotation();
+      notifyListeners();
+      return;
+    }
+
+    final current = vpnService.currentServer ?? _selectedServer;
+    if (current != null) {
+      _recentRotationHosts
+        ..remove(current.host)
+        ..add(current.host);
+      if (_recentRotationHosts.length > _recentRotationLimit) {
+        _recentRotationHosts.removeAt(0);
+      }
+    }
+    _cancelRotation();
+    _rotationInProgress = true;
+    _selectedServer = next;
+    unawaited(_saveSelectedServer(next));
+    notifyListeners();
+
+    await _disconnectVpnUseCase();
+    // Let the old tunnel finish closing before the next one starts.
+    for (var i = 0; i < 30; i++) {
+      if (connectionState != VpnConnectionState.disconnecting) break;
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+    }
+    if (!_rotationInProgress || _isDisposed) return;
+    _failoverActive = true;
+    _failoverTried
+      ..clear()
+      ..add(next.id);
+    await _connectVpnUseCase(next);
+  }
+
+  /// Next relay for IP rotation: the fastest reachable one whose address
+  /// differs from the current and recently used ones, kept to the current
+  /// country when the user asked for that.
+  VpnServer? _nextRotationServer() {
+    final current = vpnService.currentServer ?? _selectedServer;
+    List<VpnServer> pool(Set<String> avoidHosts) => _allServers
+        .where(
+          (s) =>
+              s.isAvailable &&
+              !avoidHosts.contains(s.host) &&
+              (!prefs.ipRotationSameCountry ||
+                  s.countryCode == current?.countryCode),
+        )
+        .toList();
+
+    final currentHost = current?.host;
+    var candidates = pool({..._recentRotationHosts, ?currentHost});
+    // Every alternative was used recently: allow them again, but still
+    // never the address in use now.
+    if (candidates.isEmpty) candidates = pool({?currentHost});
+    return candidates.isEmpty ? null : _detectFastestUseCase(candidates);
+  }
+
+  void _updateRotation(VpnConnectionState state) {
+    if (state == VpnConnectionState.connected) {
+      _connectedByRotation = _rotationInProgress;
+      _rotationInProgress = false;
+      _scheduleRotation();
+    } else if (state == VpnConnectionState.error &&
+        !_failoverActive &&
+        !_failoverPending) {
+      // The new relay and its failover alternates all failed.
+      _rotationInProgress = false;
+      _cancelRotation();
+    } else if (state == VpnConnectionState.disconnected &&
+        !_rotationInProgress) {
+      _cancelRotation();
+    }
+  }
+
+  void _scheduleRotation() {
+    _cancelRotation();
+    if (!prefs.ipRotationEnabled ||
+        connectionState != VpnConnectionState.connected) {
+      return;
+    }
+    final interval = Duration(minutes: prefs.ipRotationMinutes);
+    _nextRotationAt = DateTime.now().add(interval);
+    _rotationTimer = Timer(interval, () => unawaited(rotateIpNow()));
+  }
+
+  void _cancelRotation() {
+    _rotationTimer?.cancel();
+    _rotationTimer = null;
+    _nextRotationAt = null;
   }
 
   Future<void> clearHistory() async {
@@ -540,6 +682,7 @@ class VpnController extends ChangeNotifier {
   @override
   void dispose() {
     _isDisposed = true;
+    _cancelRotation();
     _stateSub.cancel();
     _metricsSub.cancel();
     vpnService.dispose();

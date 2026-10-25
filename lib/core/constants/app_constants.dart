@@ -36,6 +36,10 @@ class AppConstants {
   static const String keyAutoFastestServer = 'setting_auto_fastest_server';
   static const String keySmartFailover = 'setting_smart_failover';
   static const String keyKillSwitch = 'setting_kill_switch';
+  static const String keyIpRotation = 'setting_ip_rotation';
+  static const String keyIpRotationMinutes = 'setting_ip_rotation_minutes';
+  static const String keyIpRotationSameCountry =
+      'setting_ip_rotation_same_country';
 
   // Permission Disclosure Strings (PHASE 9 requirement)
   static const String vpnDisclosureTitle = 'VPN Permission Disclosure';

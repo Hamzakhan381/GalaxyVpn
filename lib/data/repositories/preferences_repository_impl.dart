@@ -120,6 +120,27 @@ class PreferencesRepositoryImpl implements PreferencesRepository {
   Future<bool> setKillSwitch(bool val) => _dataSource.setKillSwitch(val);
 
   @override
+  bool get ipRotationEnabled => _dataSource.ipRotationEnabled;
+
+  @override
+  Future<bool> setIpRotationEnabled(bool val) =>
+      _dataSource.setIpRotationEnabled(val);
+
+  @override
+  int get ipRotationMinutes => _dataSource.ipRotationMinutes;
+
+  @override
+  Future<bool> setIpRotationMinutes(int minutes) =>
+      _dataSource.setIpRotationMinutes(minutes);
+
+  @override
+  bool get ipRotationSameCountry => _dataSource.ipRotationSameCountry;
+
+  @override
+  Future<bool> setIpRotationSameCountry(bool val) =>
+      _dataSource.setIpRotationSameCountry(val);
+
+  @override
   List<Map<String, dynamic>> getSessionHistoryJson() =>
       _dataSource.getSessionHistoryJson();
 

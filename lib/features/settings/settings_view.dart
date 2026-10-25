@@ -7,6 +7,7 @@ import '../../core/storage/preferences_service.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../../presentation/controllers/vpn_controller.dart';
 import '../common/cyber_background.dart';
+import '../common/ip_rotation_card.dart';
 import '../common/motion.dart';
 import '../common/settings_row.dart';
 import '../privacy/legal_views.dart';
@@ -182,6 +183,54 @@ class _SettingsViewState extends State<SettingsView> {
                           },
                         ),
                       ),
+                      SettingsRow(
+                        icon: Icons.autorenew_rounded,
+                        title: 'Auto IP Rotation',
+                        subtitle:
+                            'Switch to the fastest server with a new IP '
+                            'every ${vpnRepo.ipRotationMinutes} min',
+                        trailing: Switch(
+                          value: vpnRepo.ipRotationEnabled,
+                          activeThumbColor: AppColors.pureWhite,
+                          activeTrackColor: AppColors.connectedStatus,
+                          onChanged: (val) async {
+                            await vpnRepo.setIpRotationEnabled(val);
+                            setState(() {});
+                          },
+                        ),
+                      ),
+                      if (vpnRepo.ipRotationEnabled) ...[
+                        SettingsRow(
+                          icon: Icons.timer_outlined,
+                          title: 'Rotation Interval',
+                          subtitle: vpnRepo.ipRotationMinutes == 1
+                              ? 'Every minute'
+                              : 'Every ${vpnRepo.ipRotationMinutes} minutes',
+                          onTap: () async {
+                            await showIpRotationIntervalPicker(
+                              context,
+                              vpnRepo,
+                            );
+                            if (mounted) setState(() {});
+                          },
+                        ),
+                        SettingsRow(
+                          icon: Icons.flag_outlined,
+                          title: 'Keep Same Country',
+                          subtitle:
+                              'Rotate only between servers in the current '
+                              'country',
+                          trailing: Switch(
+                            value: vpnRepo.ipRotationSameCountry,
+                            activeThumbColor: AppColors.pureWhite,
+                            activeTrackColor: AppColors.connectedStatus,
+                            onChanged: (val) async {
+                              await vpnRepo.setIpRotationSameCountry(val);
+                              setState(() {});
+                            },
+                          ),
+                        ),
+                      ],
                     ]),
                   ],
                 ),
@@ -201,7 +250,7 @@ class _SettingsViewState extends State<SettingsView> {
                         icon: Icons.speed_rounded,
                         title: 'Auto-Detect Fastest Server',
                         subtitle:
-                            'Probe TCP relays and use reported latency for UDP',
+                            "Test each country's servers from your network",
                         trailing: Switch(
                           value: prefs.autoFastestServer,
                           activeThumbColor: AppColors.pureWhite,
