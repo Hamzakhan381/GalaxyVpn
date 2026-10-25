@@ -11,6 +11,7 @@ import 'package:galaxy_vpn/features/common/connection_orb.dart';
 import 'package:galaxy_vpn/features/common/connection_status_badge.dart';
 import 'package:galaxy_vpn/features/common/cyber_background.dart';
 import 'package:galaxy_vpn/features/common/fastest_server_card.dart';
+import 'package:galaxy_vpn/features/common/galaxy_starfield.dart';
 import 'package:galaxy_vpn/features/onboarding/vpn_disclosure_view.dart';
 import 'package:galaxy_vpn/features/onboarding/welcome_view.dart';
 import 'package:galaxy_vpn/presentation/controllers/vpn_controller.dart';
@@ -187,6 +188,26 @@ void main() {
       );
       await tester.pump();
       expect(find.text('CONNECTING'), findsOneWidget);
+    });
+
+    testWidgets('ConnectionOrb surrounds itself with a galaxy starfield once connected', (tester) async {
+      Widget orb(VpnConnectionState state) =>
+          buildTestableWidget(ConnectionOrb(state: state, onTap: () {}));
+
+      await tester.pumpWidget(orb(VpnConnectionState.connecting));
+      await tester.pump();
+      expect(
+        tester.widget<GalaxyStarfield>(find.byType(GalaxyStarfield)).active,
+        isFalse,
+      );
+
+      await tester.pumpWidget(orb(VpnConnectionState.connected));
+      await tester.pumpAndSettle();
+      expect(find.text('DISCONNECT'), findsOneWidget);
+      expect(
+        tester.widget<GalaxyStarfield>(find.byType(GalaxyStarfield)).active,
+        isTrue,
+      );
     });
 
     testWidgets('FastestServerCard renders safely without visual or test regressions', (tester) async {

@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../app/theme/app_colors.dart';
 import '../../app/theme/app_text_styles.dart';
 import '../../domain/entities/vpn_connection_state.dart';
+import 'galaxy_starfield.dart';
 
 /// Premium cybersecurity connect/disconnect button with smooth circular state animation.
 ///
@@ -157,7 +158,13 @@ class _ConnectionOrbState extends State<ConnectionOrb>
             height: 228,
             child: Stack(
               alignment: Alignment.center,
+              clipBehavior: Clip.none,
               children: [
+                // ── 0. Twinkling galaxy star field while connected ─────────────
+                Positioned.fill(
+                  child: GalaxyStarfield(active: isConnected),
+                ),
+
                 // ── 1. Circular Outer Indicator Ring & Gyroscopic Animations ──
                 Positioned.fill(
                   child: AnimatedBuilder(
