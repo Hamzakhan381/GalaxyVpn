@@ -170,31 +170,42 @@ class _HomeViewState extends State<HomeView> with TickerProviderStateMixin {
                       const SizedBox(height: 28),
 
                       // ── Fastest Server Auto-Detect & Suggestion Card ─────────
-                      AnimatedFadeSlide(
-                        delayMs: Motion.staggerStepMs * 3,
-                        child: FastestServerCard(
-                          vpnRepo: vpnRepo,
-                          onConnect: () => vpnRepo.connectToFastestServer(),
-                          onServerDetails: () {
-                            if (vpnRepo.fastestServer != null) {
-                              showModalBottomSheet(
-                                context: context,
-                                isScrollControlled: true,
-                                backgroundColor: Colors.transparent,
-                                builder: (_) => ServerDetailsSheet(
-                                  server: vpnRepo.fastestServer!,
-                                  onConnect: () {
-                                    Navigator.of(context).pop();
-                                    vpnRepo.selectServer(
-                                      vpnRepo.fastestServer!,
-                                    );
-                                    vpnRepo.connect();
+                      // Folds away while connected: the server card below
+                      // already names the active relay, so the live stats
+                      // move up into view instead of sitting below the fold.
+                      AnimatedSize(
+                        duration: Motion.medium,
+                        curve: Curves.easeOutCubic,
+                        alignment: Alignment.topCenter,
+                        child: isConnected
+                            ? const SizedBox(width: double.infinity)
+                            : AnimatedFadeSlide(
+                                delayMs: Motion.staggerStepMs * 3,
+                                child: FastestServerCard(
+                                  vpnRepo: vpnRepo,
+                                  onConnect: () =>
+                                      vpnRepo.connectToFastestServer(),
+                                  onServerDetails: () {
+                                    if (vpnRepo.fastestServer != null) {
+                                      showModalBottomSheet(
+                                        context: context,
+                                        isScrollControlled: true,
+                                        backgroundColor: Colors.transparent,
+                                        builder: (_) => ServerDetailsSheet(
+                                          server: vpnRepo.fastestServer!,
+                                          onConnect: () {
+                                            Navigator.of(context).pop();
+                                            vpnRepo.selectServer(
+                                              vpnRepo.fastestServer!,
+                                            );
+                                            vpnRepo.connect();
+                                          },
+                                        ),
+                                      );
+                                    }
                                   },
                                 ),
-                              );
-                            }
-                          },
-                        ),
+                              ),
                       ),
 
                       // ── Selected Server Card ────────────────────────────────

@@ -457,14 +457,15 @@ void main() {
         expect(repo.totalBytesTransferred, greaterThanOrEqualTo(0));
       });
 
-      test('formattedTotalProtectedTime returns minutes format', () async {
+      test('formattedTotalProtectedTime returns minutes, or seconds under a minute',
+          () async {
         await repo.loadServers();
         await repo.connect();
         await repo.disconnect();
         await Future.delayed(const Duration(milliseconds: 30));
 
         final formatted = repo.formattedTotalProtectedTime;
-        expect(formatted, contains('m'));
+        expect(formatted, matches(RegExp(r'^(\d+h )?\d+[ms]$')));
       });
 
       test('formattedTotalDataTransferred returns a unit-suffixed string',

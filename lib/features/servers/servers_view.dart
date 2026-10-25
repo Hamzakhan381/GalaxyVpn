@@ -6,6 +6,7 @@ import '../../app/theme/app_colors.dart';
 import '../../app/theme/app_text_styles.dart';
 import '../../data/models/vpn_server.dart';
 import '../../domain/entities/server_sort_option.dart';
+import '../../domain/entities/vpn_connection_state.dart';
 import '../../presentation/controllers/vpn_controller.dart';
 import '../common/cyber_background.dart';
 import '../common/empty_state.dart';
@@ -400,6 +401,10 @@ class _ServersViewState extends State<ServersView> {
                                     child: ServerListTile(
                                       server: server,
                                       isSelected: isSelected,
+                                      isConnected:
+                                          isSelected &&
+                                          vpnRepo.connectionState ==
+                                              VpnConnectionState.connected,
                                       isFastest: isFastest,
                                       onFavoriteTap: () {
                                         HapticFeedback.lightImpact();

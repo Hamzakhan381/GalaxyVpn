@@ -455,6 +455,8 @@ class VpnController extends ChangeNotifier {
     if (hours > 0) {
       return '${hours}h ${minutes}m';
     }
+    // Short sessions read as "45s" rather than a misleading "0m".
+    if (minutes == 0 && totalSecs > 0) return '${totalSecs}s';
     return '${minutes}m';
   }
 

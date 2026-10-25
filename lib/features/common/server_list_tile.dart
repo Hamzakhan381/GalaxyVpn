@@ -8,6 +8,9 @@ import 'country_badge.dart';
 class ServerListTile extends StatefulWidget {
   final VpnServer server;
   final bool isSelected;
+
+  /// True only while the tunnel is actually up through this server.
+  final bool isConnected;
   final bool isFastest;
   final VoidCallback onTap;
   final VoidCallback onFavoriteTap;
@@ -16,6 +19,7 @@ class ServerListTile extends StatefulWidget {
     super.key,
     required this.server,
     this.isSelected = false,
+    this.isConnected = false,
     this.isFastest = false,
     required this.onTap,
     required this.onFavoriteTap,
@@ -68,6 +72,7 @@ class _ServerListTileState extends State<ServerListTile>
   Widget build(BuildContext context) {
     final server = widget.server;
     final isSelected = widget.isSelected;
+    final isConnected = widget.isConnected;
     final pingColor = _getPingColor(server.pingMs);
 
     return AnimatedScale(
@@ -79,13 +84,17 @@ class _ServerListTileState extends State<ServerListTile>
         curve: Curves.easeOutCubic,
         margin: const EdgeInsets.only(bottom: 12),
         decoration: BoxDecoration(
-          color: isSelected
+          color: isSelected || isConnected
               ? AppColors.elevatedSurface
               : AppColors.cardBackground,
           borderRadius: BorderRadius.circular(18),
           border: Border.all(
-            color: isSelected ? AppColors.primaryText : AppColors.borderDivider,
-            width: isSelected ? 1.5 : 1.0,
+            color: isConnected
+                ? AppColors.connectedStatus.withValues(alpha: 0.75)
+                : isSelected
+                ? AppColors.primaryText
+                : AppColors.borderDivider,
+            width: isSelected || isConnected ? 1.5 : 1.0,
           ),
           boxShadow: [
             BoxShadow(
@@ -133,70 +142,27 @@ class _ServerListTileState extends State<ServerListTile>
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ),
-                            if (isSelected) ...[
-                              const SizedBox(width: 8),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 7,
-                                  vertical: 2,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: AppColors.connectedStatus.withValues(
-                                    alpha: 0.15,
-                                  ),
-                                  borderRadius: BorderRadius.circular(6),
-                                  border: Border.all(
-                                    color: AppColors.connectedStatus.withValues(
-                                      alpha: 0.4,
-                                    ),
-                                    width: 0.8,
-                                  ),
-                                ),
-                                child: Text(
-                                  'CONNECTED',
-                                  style: AppTextStyles.labelSm.copyWith(
-                                    color: AppColors.connectedStatus,
-                                    fontSize: 8.5,
-                                    fontWeight: FontWeight.w800,
-                                    letterSpacing: 0.6,
-                                  ),
-                                ),
-                              ),
-                            ],
+                            // A compact bolt keeps the country name readable;
+                            // a worded badge here squeezed it to nothing.
                             if (widget.isFastest) ...[
                               const SizedBox(width: 6),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 6,
-                                  vertical: 2,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: AppColors.surfaceElevated,
-                                  borderRadius: BorderRadius.circular(6),
-                                  border: Border.all(
-                                    color: AppColors.borderDivider,
-                                    width: 0.8,
+                              Semantics(
+                                label: 'Fastest server',
+                                child: Container(
+                                  padding: const EdgeInsets.all(3),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.surfaceElevated,
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: AppColors.borderDivider,
+                                      width: 0.8,
+                                    ),
                                   ),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    const Icon(
-                                      Icons.bolt_rounded,
-                                      size: 10,
-                                      color: AppColors.primaryText,
-                                    ),
-                                    const SizedBox(width: 2),
-                                    Text(
-                                      'FASTEST',
-                                      style: AppTextStyles.labelSm.copyWith(
-                                        color: AppColors.secondaryText,
-                                        fontSize: 8.5,
-                                        fontWeight: FontWeight.w800,
-                                        letterSpacing: 0.6,
-                                      ),
-                                    ),
-                                  ],
+                                  child: const Icon(
+                                    Icons.bolt_rounded,
+                                    size: 11,
+                                    color: AppColors.primaryText,
+                                  ),
                                 ),
                               ),
                             ],
@@ -205,14 +171,32 @@ class _ServerListTileState extends State<ServerListTile>
                         const SizedBox(height: 4),
                         Row(
                           children: [
+                            if (isConnected) ...[
+                              Container(
+                                width: 6,
+                                height: 6,
+                                decoration: const BoxDecoration(
+                                  color: AppColors.connectedStatus,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                              const SizedBox(width: 5),
+                            ],
                             Flexible(
                               child: Text(
-                                server.city.isNotEmpty
+                                isConnected
+                                    ? 'Connected'
+                                    : server.city.isNotEmpty
                                     ? server.city
                                     : server.host,
                                 style: AppTextStyles.bodyMd.copyWith(
-                                  color: AppColors.secondaryText,
+                                  color: isConnected
+                                      ? AppColors.connectedStatus
+                                      : AppColors.secondaryText,
                                   fontSize: 12,
+                                  fontWeight: isConnected
+                                      ? FontWeight.w600
+                                      : null,
                                 ),
                                 overflow: TextOverflow.ellipsis,
                               ),

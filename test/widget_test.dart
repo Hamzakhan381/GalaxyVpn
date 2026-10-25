@@ -5,6 +5,7 @@ import 'package:galaxy_vpn/core/storage/preferences_service.dart';
 import 'package:galaxy_vpn/data/repositories/auth_repository_impl.dart';
 import 'package:galaxy_vpn/data/repositories/server_repository_impl.dart';
 import 'package:galaxy_vpn/domain/entities/vpn_connection_state.dart';
+import 'package:galaxy_vpn/domain/entities/vpn_server.dart';
 import 'package:galaxy_vpn/domain/repositories/auth_repository.dart';
 import 'package:galaxy_vpn/features/auth/login_view.dart';
 import 'package:galaxy_vpn/features/common/connection_orb.dart';
@@ -12,6 +13,7 @@ import 'package:galaxy_vpn/features/common/connection_status_badge.dart';
 import 'package:galaxy_vpn/features/common/cyber_background.dart';
 import 'package:galaxy_vpn/features/common/fastest_server_card.dart';
 import 'package:galaxy_vpn/features/common/galaxy_starfield.dart';
+import 'package:galaxy_vpn/features/common/server_list_tile.dart';
 import 'package:galaxy_vpn/features/onboarding/vpn_disclosure_view.dart';
 import 'package:galaxy_vpn/features/onboarding/welcome_view.dart';
 import 'package:galaxy_vpn/presentation/controllers/vpn_controller.dart';
@@ -220,6 +222,47 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(find.byType(FastestServerCard), findsOneWidget);
+    });
+
+    testWidgets('ServerListTile keeps the country visible and only says Connected when connected', (tester) async {
+      final server = VpnServer(
+        id: 'srv_jp',
+        country: 'Japan',
+        countryCode: 'JP',
+        city: 'public-vpn-147',
+        host: '219.100.37.119',
+        port: 443,
+        protocol: 'TCP',
+        pingMs: 9,
+        score: 900000,
+        ovpnConfig: 'client\ndev tun\n',
+        lastChecked: DateTime(2026, 1, 1),
+      );
+      Widget tile({required bool connected}) => buildTestableWidget(
+        Scaffold(
+          body: ServerListTile(
+            server: server,
+            isSelected: true,
+            isConnected: connected,
+            isFastest: true,
+            onTap: () {},
+            onFavoriteTap: () {},
+          ),
+        ),
+      );
+
+      await tester.pumpWidget(tile(connected: false));
+      await tester.pumpAndSettle();
+      expect(find.text('Japan'), findsOneWidget);
+      expect(find.text('public-vpn-147'), findsOneWidget);
+      expect(find.text('Connected'), findsNothing);
+      // Merged into the tile's tap target, so TalkBack reads it with the tile.
+      expect(find.bySemanticsLabel(RegExp('Fastest server')), findsOneWidget);
+
+      await tester.pumpWidget(tile(connected: true));
+      await tester.pumpAndSettle();
+      expect(find.text('Japan'), findsOneWidget);
+      expect(find.text('Connected'), findsOneWidget);
     });
   });
 }
