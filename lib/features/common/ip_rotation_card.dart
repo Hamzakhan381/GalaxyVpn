@@ -1,12 +1,13 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../app/theme/app_colors.dart';
 import '../../app/theme/app_text_styles.dart';
+import '../../core/platform/haptics.dart';
 import '../../presentation/controllers/vpn_controller.dart';
+import 'app_switch.dart';
 
 /// Lets the user pick how often IP rotation switches relays.
 Future<void> showIpRotationIntervalPicker(
@@ -47,6 +48,7 @@ Future<void> showIpRotationIntervalPicker(
                     : AppColors.mutedText,
               ),
               onTap: () async {
+                Haptics.tick();
                 await vpn.setIpRotationMinutes(minutes);
                 if (ctx.mounted) Navigator.of(ctx).pop();
               },
@@ -172,15 +174,7 @@ class _IpRotationCardState extends State<IpRotationCard> {
                   ],
                 ),
               ),
-              Switch(
-                value: enabled,
-                activeThumbColor: AppColors.pureWhite,
-                activeTrackColor: AppColors.connectedStatus,
-                onChanged: (on) {
-                  HapticFeedback.selectionClick();
-                  vpn.setIpRotationEnabled(on);
-                },
-              ),
+              AppSwitch(value: enabled, onChanged: vpn.setIpRotationEnabled),
             ],
           ),
           if (enabled) ...[
@@ -198,7 +192,7 @@ class _IpRotationCardState extends State<IpRotationCard> {
                   onPressed: vpn.isRotatingIp
                       ? null
                       : () {
-                          HapticFeedback.lightImpact();
+                          Haptics.click();
                           vpn.rotateIpNow();
                         },
                   icon: const Icon(Icons.refresh_rounded, size: 16),

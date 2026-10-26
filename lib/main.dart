@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app/app.dart';
 import 'core/platform/android_system.dart';
+import 'core/platform/haptics.dart';
 import 'core/storage/preferences_service.dart';
 import 'data/datasources/platform/unified_vpn_platform_data_source.dart';
 import 'data/repositories/auth_repository_impl.dart';
@@ -59,6 +60,7 @@ Future<void> main() async {
   }
 
   final prefsService = PreferencesService(sharedPreferences);
+  Haptics.enabled = prefsService.hapticsEnabled;
 
   // Budget phones start on lighter animations unless the user picked a level
   // under Settings › Animations. The answer is ready on the native side

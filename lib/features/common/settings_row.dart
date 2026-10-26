@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../app/theme/app_colors.dart';
 import '../../app/theme/app_text_styles.dart';
+import '../../core/platform/haptics.dart';
 
 class SettingsRow extends StatelessWidget {
   final IconData icon;
@@ -84,7 +85,12 @@ class SettingsRow extends StatelessWidget {
                         size: 20,
                       )
                     : null),
-            onTap: onTap,
+            onTap: onTap == null
+                ? null
+                : () {
+                    Haptics.tick();
+                    onTap!();
+                  },
           ),
         ),
         if (showDivider)

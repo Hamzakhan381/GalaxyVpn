@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../app/theme/app_colors.dart';
 import '../../app/theme/app_text_styles.dart';
+import '../../core/platform/haptics.dart';
 import '../../data/models/vpn_server.dart';
 import '../../domain/entities/vpn_connection_state.dart';
 import '../../presentation/controllers/vpn_controller.dart';
@@ -119,6 +120,7 @@ class _FastestServerCardState extends State<FastestServerCard>
   }
 
   void _handleManualRefresh() {
+    Haptics.tick();
     if (_isTestEnvironment) {
       widget.vpnRepo.detectFastestServer(forceProbe: true);
       return;
@@ -209,7 +211,12 @@ class _FastestServerCardState extends State<FastestServerCard>
                     highlightColor: AppColors.primaryText.withValues(
                       alpha: 0.04,
                     ),
-                    onTap: fastest != null ? widget.onServerDetails : null,
+                    onTap: fastest != null
+                        ? () {
+                            Haptics.tick();
+                            widget.onServerDetails?.call();
+                          }
+                        : null,
                     child: Padding(
                       padding: EdgeInsets.symmetric(
                         horizontal: 16,
@@ -649,6 +656,7 @@ class _FastestServerCardState extends State<FastestServerCard>
                     onTap: isConnecting
                         ? null
                         : () async {
+                            Haptics.heavy();
                             if (widget.onConnect != null) {
                               widget.onConnect!();
                             } else {
@@ -703,6 +711,7 @@ class _FastestServerCardState extends State<FastestServerCard>
                 borderRadius: BorderRadius.circular(14),
                 splashColor: Colors.white10,
                 onTap: () {
+                  Haptics.tick();
                   widget.vpnRepo.selectFastestServer();
                 },
                 child: Padding(

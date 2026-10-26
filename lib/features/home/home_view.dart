@@ -1,13 +1,13 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../app/theme/app_colors.dart';
 import '../../app/theme/app_text_styles.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/platform/android_system.dart';
+import '../../core/platform/haptics.dart';
 import '../../domain/entities/vpn_connection_state.dart';
 import '../../domain/entities/vpn_live_metrics.dart';
 import '../../presentation/controllers/vpn_controller.dart';
@@ -60,9 +60,9 @@ class _HomeViewState extends State<HomeView> with TickerProviderStateMixin {
     if (state == VpnConnectionState.connected) {
       // Automatic IP changes reconnect every few minutes; only buzz when the
       // user started the connection.
-      if (!_vpnRepo.connectedByRotation) HapticFeedback.heavyImpact();
+      if (!_vpnRepo.connectedByRotation) Haptics.success();
     } else if (state == VpnConnectionState.error) {
-      HapticFeedback.vibrate();
+      Haptics.error();
       if (!Motion.isReduced(context)) _shake.forward(from: 0);
     }
   }
@@ -76,7 +76,7 @@ class _HomeViewState extends State<HomeView> with TickerProviderStateMixin {
   }
 
   Future<void> _refresh() async {
-    HapticFeedback.mediumImpact();
+    Haptics.click();
     await _vpnRepo.detectFastestServer(forceProbe: true);
   }
 
@@ -172,7 +172,7 @@ class _HomeViewState extends State<HomeView> with TickerProviderStateMixin {
                               state: state,
                               connectingCountry: selectedServer?.country,
                               onTap: () {
-                                HapticFeedback.mediumImpact();
+                                Haptics.heavy();
                                 if (isConnected || isConnecting) {
                                   vpnRepo.disconnect();
                                 } else if (!isDisconnecting) {

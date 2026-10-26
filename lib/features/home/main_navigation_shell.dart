@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 
 import '../../app/theme/app_colors.dart';
 import '../../core/platform/android_system.dart';
+import '../../core/platform/haptics.dart';
 import '../../core/storage/preferences_service.dart';
 import '../../domain/entities/vpn_connection_state.dart';
 import '../../domain/repositories/connectivity_repository.dart';
@@ -130,7 +131,7 @@ class _MainNavigationShellState extends State<MainNavigationShell>
 
   void _onTabSelected(int index) {
     if (index == _currentIndex) return;
-    HapticFeedback.selectionClick();
+    Haptics.tick();
     setState(() {
       _direction = index > _currentIndex ? 1 : -1;
       _currentIndex = index;

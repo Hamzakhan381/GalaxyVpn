@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../app/theme/app_colors.dart';
 import '../../app/theme/app_text_styles.dart';
+import '../../core/platform/haptics.dart';
 import '../../data/models/vpn_server.dart';
 import 'country_badge.dart';
 import 'motion.dart';
@@ -113,7 +114,10 @@ class _ServerListTileState extends State<ServerListTile>
             onTapDown: (_) => setState(() => _isPressed = true),
             onTapUp: (_) => setState(() => _isPressed = false),
             onTapCancel: () => setState(() => _isPressed = false),
-            onTap: widget.onTap,
+            onTap: () {
+              Haptics.tick();
+              widget.onTap();
+            },
             splashColor: AppColors.primaryText.withValues(alpha: 0.08),
             highlightColor: AppColors.primaryText.withValues(alpha: 0.04),
             child: Padding(

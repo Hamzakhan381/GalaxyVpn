@@ -84,6 +84,13 @@ class PreferencesRepositoryImpl implements PreferencesRepository {
       _dataSource.setMotionLevelChosen(chosen);
 
   @override
+  bool get hapticsEnabled => _dataSource.hapticsEnabled;
+
+  @override
+  Future<bool> setHapticsEnabled(bool enabled) =>
+      _dataSource.setHapticsEnabled(enabled);
+
+  @override
   bool get emulatorMode => _dataSource.emulatorMode;
 
   @override

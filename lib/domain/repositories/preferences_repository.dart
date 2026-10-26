@@ -43,6 +43,10 @@ abstract class PreferencesRepository {
   bool get motionLevelChosen;
   Future<bool> setMotionLevelChosen(bool chosen);
 
+  /// Vibration on taps, connect and errors; on by default.
+  bool get hapticsEnabled;
+  Future<bool> setHapticsEnabled(bool enabled);
+
   bool get emulatorMode;
   Future<bool> setEmulatorMode(bool val);
 

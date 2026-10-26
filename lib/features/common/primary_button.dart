@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../app/theme/app_colors.dart';
 import '../../app/theme/app_text_styles.dart';
+import '../../core/platform/haptics.dart';
 import 'motion.dart';
 
 /// Primary action button in pure white with dark obsidian text.
@@ -28,6 +29,11 @@ class PrimaryButton extends StatefulWidget {
 
 class _PrimaryButtonState extends State<PrimaryButton> {
   bool _isPressed = false;
+
+  void _onPressed() {
+    Haptics.click();
+    widget.onPressed?.call();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -59,7 +65,7 @@ class _PrimaryButtonState extends State<PrimaryButton> {
           onTapUp: isEnabled ? (_) => setState(() => _isPressed = false) : null,
           onTapCancel: () => setState(() => _isPressed = false),
           child: ElevatedButton(
-            onPressed: isEnabled ? widget.onPressed : null,
+            onPressed: isEnabled ? _onPressed : null,
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primaryAccent,
               foregroundColor: AppColors.primaryBackground,

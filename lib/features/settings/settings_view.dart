@@ -4,9 +4,11 @@ import 'package:provider/provider.dart';
 import '../../app/theme/app_colors.dart';
 import '../../app/theme/app_text_styles.dart';
 import '../../core/platform/android_system.dart';
+import '../../core/platform/haptics.dart';
 import '../../core/storage/preferences_service.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../../presentation/controllers/vpn_controller.dart';
+import '../common/app_switch.dart';
 import '../common/cyber_background.dart';
 import '../common/ip_rotation_card.dart';
 import '../common/motion.dart';
@@ -161,10 +163,8 @@ class _SettingsViewState extends State<SettingsView> {
                         icon: Icons.flash_on_outlined,
                         title: 'Auto-connect on Launch',
                         subtitle: 'Establish tunnel immediately when opened',
-                        trailing: Switch(
+                        trailing: AppSwitch(
                           value: prefs.autoConnect,
-                          activeThumbColor: AppColors.pureWhite,
-                          activeTrackColor: AppColors.connectedStatus,
                           onChanged: (val) async {
                             await prefs.setAutoConnect(val);
                             setState(() {});
@@ -176,10 +176,8 @@ class _SettingsViewState extends State<SettingsView> {
                         title: 'Reconnect on Network Change',
                         subtitle:
                             'Retry the selected relay when internet returns',
-                        trailing: Switch(
+                        trailing: AppSwitch(
                           value: prefs.reconnectOnNetworkChange,
-                          activeThumbColor: AppColors.pureWhite,
-                          activeTrackColor: AppColors.connectedStatus,
                           onChanged: (val) async {
                             await prefs.setReconnectOnNetworkChange(val);
                             setState(() {});
@@ -192,10 +190,8 @@ class _SettingsViewState extends State<SettingsView> {
                         subtitle:
                             'Switch to the fastest server with a new IP '
                             'every ${vpnRepo.ipRotationMinutes} min',
-                        trailing: Switch(
+                        trailing: AppSwitch(
                           value: vpnRepo.ipRotationEnabled,
-                          activeThumbColor: AppColors.pureWhite,
-                          activeTrackColor: AppColors.connectedStatus,
                           onChanged: (val) async {
                             await vpnRepo.setIpRotationEnabled(val);
                             setState(() {});
@@ -223,10 +219,8 @@ class _SettingsViewState extends State<SettingsView> {
                           subtitle:
                               'Rotate only between servers in the current '
                               'country',
-                          trailing: Switch(
+                          trailing: AppSwitch(
                             value: vpnRepo.ipRotationSameCountry,
-                            activeThumbColor: AppColors.pureWhite,
-                            activeTrackColor: AppColors.connectedStatus,
                             onChanged: (val) async {
                               await vpnRepo.setIpRotationSameCountry(val);
                               setState(() {});
@@ -262,10 +256,8 @@ class _SettingsViewState extends State<SettingsView> {
                         title: 'Auto-Detect Fastest Server',
                         subtitle:
                             "Test each country's servers from your network",
-                        trailing: Switch(
+                        trailing: AppSwitch(
                           value: prefs.autoFastestServer,
-                          activeThumbColor: AppColors.pureWhite,
-                          activeTrackColor: AppColors.connectedStatus,
                           onChanged: (val) async {
                             await prefs.setAutoFastestServer(val);
                             if (val) {
@@ -279,10 +271,8 @@ class _SettingsViewState extends State<SettingsView> {
                         icon: Icons.bolt_outlined,
                         title: 'Turbo Speed Optimization',
                         subtitle: 'TCP/UDP socket buffers and conservative packet sizing',
-                        trailing: Switch(
+                        trailing: AppSwitch(
                           value: prefs.turboSpeedMode,
-                          activeThumbColor: AppColors.pureWhite,
-                          activeTrackColor: AppColors.connectedStatus,
                           onChanged: (val) async {
                             await prefs.setTurboSpeedMode(val);
                             setState(() {});
@@ -321,14 +311,27 @@ class _SettingsViewState extends State<SettingsView> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildSectionHeader('APPEARANCE'),
+                    _buildSectionHeader('APPEARANCE & FEEL'),
                     _buildCard([
                       SettingsRow(
                         icon: Icons.animation_rounded,
                         title: 'Animations',
                         subtitle: _motionLabels[motion.level]!.$1,
-                        showDivider: false,
                         onTap: () => _showMotionDialog(context, motion),
+                      ),
+                      SettingsRow(
+                        icon: Icons.vibration_rounded,
+                        title: 'Haptic Feedback',
+                        subtitle: 'Vibrate lightly on taps, connect and errors',
+                        showDivider: false,
+                        trailing: AppSwitch(
+                          value: prefs.hapticsEnabled,
+                          onChanged: (val) async {
+                            Haptics.enabled = val;
+                            await prefs.setHapticsEnabled(val);
+                            setState(() {});
+                          },
+                        ),
                       ),
                     ]),
                   ],
@@ -598,6 +601,7 @@ class _SettingsViewState extends State<SettingsView> {
                       : AppColors.mutedText,
                 ),
                 onTap: () async {
+                  Haptics.tick();
                   await motion.setLevel(level);
                   if (ctx.mounted) Navigator.of(ctx).pop();
                   if (mounted) setState(() {});
@@ -713,6 +717,7 @@ class _SettingsViewState extends State<SettingsView> {
                       color: AppColors.mutedText,
                     ),
               onTap: () async {
+                Haptics.tick();
                 await prefs.setApiRegion(r);
                 if (ctx.mounted) Navigator.of(ctx).pop();
                 setState(() {});

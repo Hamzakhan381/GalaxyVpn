@@ -10,6 +10,7 @@ import '../../app/router.dart';
 import '../../app/theme/app_colors.dart';
 import '../../app/theme/app_text_styles.dart';
 import '../../core/constants/app_constants.dart';
+import '../../core/platform/haptics.dart';
 import '../../core/storage/preferences_service.dart';
 import '../../presentation/controllers/vpn_controller.dart';
 import '../common/app_logo.dart';
@@ -144,7 +145,7 @@ class _SplashViewState extends State<SplashView> with TickerProviderStateMixin {
   void _onIntroTick() {
     if (!_lockHapticFired && _intro.value >= 0.42) {
       _lockHapticFired = true;
-      HapticFeedback.lightImpact();
+      Haptics.click();
     }
   }
 

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../app/theme/app_colors.dart';
 import '../../app/theme/app_text_styles.dart';
+import '../../core/platform/haptics.dart';
 
 /// Secondary action button using charcoal surfaces with white text and subtle borders.
 class SecondaryButton extends StatefulWidget {
@@ -27,6 +28,11 @@ class SecondaryButton extends StatefulWidget {
 class _SecondaryButtonState extends State<SecondaryButton> {
   bool _isPressed = false;
 
+  void _onPressed() {
+    Haptics.click();
+    widget.onPressed?.call();
+  }
+
   @override
   Widget build(BuildContext context) {
     final bool isEnabled = widget.onPressed != null;
@@ -45,7 +51,7 @@ class _SecondaryButtonState extends State<SecondaryButton> {
           onTapUp: isEnabled ? (_) => setState(() => _isPressed = false) : null,
           onTapCancel: () => setState(() => _isPressed = false),
           child: OutlinedButton(
-            onPressed: isEnabled ? widget.onPressed : null,
+            onPressed: isEnabled ? _onPressed : null,
             style: OutlinedButton.styleFrom(
               foregroundColor: widget.textColor ?? AppColors.primaryText,
               backgroundColor: _isPressed

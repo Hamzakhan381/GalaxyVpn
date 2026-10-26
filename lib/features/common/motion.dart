@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
+import '../../core/platform/haptics.dart';
 import '../../domain/repositories/preferences_repository.dart';
 
 /// How much the interface animates.
@@ -153,7 +153,7 @@ class _PressableScaleState extends State<PressableScale> {
 
   void _set(bool value) {
     if (!widget.enabled || _pressed == value) return;
-    if (value && widget.haptic) HapticFeedback.selectionClick();
+    if (value && widget.haptic) Haptics.tick();
     setState(() => _pressed = value);
   }
 

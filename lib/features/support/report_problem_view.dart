@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../app/theme/app_colors.dart';
 import '../../app/theme/app_text_styles.dart';
+import '../common/app_switch.dart';
 import '../common/cyber_background.dart';
 import '../common/primary_button.dart';
 
@@ -213,10 +214,8 @@ class _ReportProblemViewState extends State<ReportProblemView> {
                       ),
                     ],
                   ),
-                  Switch(
+                  AppSwitch(
                     value: _includeLogs,
-                    activeThumbColor: AppColors.pureWhite,
-                    activeTrackColor: AppColors.connectedStatus,
                     onChanged: (v) => setState(() => _includeLogs = v),
                   ),
                 ],

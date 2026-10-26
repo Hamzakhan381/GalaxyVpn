@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../app/theme/app_colors.dart';
 import '../../app/theme/app_text_styles.dart';
+import '../../core/platform/haptics.dart';
 import '../../data/models/vpn_server.dart';
 import '../../domain/entities/server_sort_option.dart';
 import '../../domain/entities/vpn_connection_state.dart';
@@ -80,7 +80,8 @@ class _ServersViewState extends State<ServersView> {
         // Get unique countries for filter
         final countries = [
           'All Countries',
-          ...vpnRepo.countryServers.map((s) => s.country).toSet().toList()..sort(),
+          ...vpnRepo.countryServers.map((s) => s.country).toSet().toList()
+            ..sort(),
         ];
 
         // Filter & Sort
@@ -407,7 +408,7 @@ class _ServersViewState extends State<ServersView> {
                                               VpnConnectionState.connected,
                                       isFastest: isFastest,
                                       onFavoriteTap: () {
-                                        HapticFeedback.lightImpact();
+                                        Haptics.tick();
                                         vpnRepo.toggleFavorite(server.id);
                                       },
                                       onTap: () {

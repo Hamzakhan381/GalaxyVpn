@@ -27,6 +27,7 @@ class AppConstants {
   static const String keyReduceMotion = 'setting_reduce_motion';
   static const String keyMotionLevel = 'setting_motion_level';
   static const String keyMotionLevelChosen = 'setting_motion_level_chosen';
+  static const String keyHapticsEnabled = 'setting_haptics';
   static const String keyEmulatorMode = 'setting_emulator_mode';
   static const String keySelectedServer = 'selected_server_cache';
   static const String keyRelayCatalogCache = 'relay_catalog_cache';

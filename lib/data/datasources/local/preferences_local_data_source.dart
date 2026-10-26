@@ -110,6 +110,12 @@ class PreferencesLocalDataSource {
   Future<bool> setMotionLevelChosen(bool chosen) =>
       _prefs.setBool(AppConstants.keyMotionLevelChosen, chosen);
 
+  bool get hapticsEnabled =>
+      _prefs.getBool(AppConstants.keyHapticsEnabled) ?? true;
+
+  Future<bool> setHapticsEnabled(bool enabled) =>
+      _prefs.setBool(AppConstants.keyHapticsEnabled, enabled);
+
   Future<bool> setMotionLevel(String level) async {
     await setReduceMotion(level == 'off');
     return _prefs.setString(AppConstants.keyMotionLevel, level);

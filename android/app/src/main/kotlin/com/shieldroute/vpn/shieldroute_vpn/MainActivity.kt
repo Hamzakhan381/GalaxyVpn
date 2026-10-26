@@ -208,6 +208,10 @@ class MainActivity : FlutterActivity() {
                     // background instead of finishing it.
                     "moveToBackground" -> result.success(activity?.moveTaskToBack(true) ?: false)
                     "isLowEndDevice" -> result.success(isLowEndDevice(appContext))
+                    "haptic" -> {
+                        Haptics.play(appContext, call.arguments as? String ?: "")
+                        result.success(true)
+                    }
                     // Android 13+ hides the connection notification (and its
                     // Disconnect action) until this is granted.
                     "requestNotificationPermission" -> {
